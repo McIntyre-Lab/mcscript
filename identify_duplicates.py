@@ -2,11 +2,10 @@
 import argparse
 import logging
 from Bio import SeqIO
-import itertools
 import collections
 import re
 import numpy
-import operator
+import os
 
 def getOptions():
     """Function to pull in command line arguments"""
@@ -14,6 +13,7 @@ def getOptions():
     parser.add_argument('-i','--input',dest='fq', action='store', required=True, help='A list of fq file [Required]')
     parser.add_argument('-o','--out', dest='out', action='store', required=True, help='Output file for counts in csv format [Required]')
     parser.add_argument('--pixel', dest='pix', action='store', default=100, required=False, help='Number of pixels to consider a read as an optical duplicate [Default:100]')
+    parser.add_argument('-a', dest='append', action='store_true', help='This flag will cause the output dataset to be appended too.')
     parser.add_argument('-g','--log',dest='log',action='store',required=False, help='Create an error log')
     args = parser.parse_args()
     return(args)
@@ -48,20 +48,19 @@ def checkOptical(myList, pix):
 
     # Create a dictionary to store optical duplicate information.
     myDict = dict()
-    cntPcrDups = 0
 
     # Create a list of sets, where each set contains headers that are within
     # args.pix of each other.
-    listOfSets, cntPcrDups = identifySets(myList, pix, cntPcrDups)
+    listOfSets = identifySets(myList, pix)
 
     # reduce the set list so that each set is a group of optical duplicates.
     redSetList = reduceSet(listOfSets)
 
     logging.info("Finished check for optical dups.")
-    return(redSetList,cntPcrDups)
+    return(redSetList)
 
 
-def identifySets(myList, pix, count):
+def identifySets(myList, pix):
     """This function steps through a list of headers and creates sets of those
        that fall within the args.pix range. These need to be reduced."""
 
@@ -87,11 +86,9 @@ def identifySets(myList, pix, count):
                     eucDist = numpy.linalg.norm(myCoord[0]-myCoord[1])
                     if eucDist <= pix:
                         item1Set.add(item2)
-                    else:
-                        count += 1
         setList.append(item1Set)
     logging.info("Finished creating sets of optical dups.")
-    return(setList, count)
+    return(setList)
 
 
 def parseHeader(fqName):
@@ -121,22 +118,44 @@ def reduceSet(setList):
     logging.info("Finished reducing optical dup sets.")
     return(setList2)
     
+def dupCounts(setList,cnt1,cnt2,cnt3):
+    """This function calculates various counts and returns a list of counts."""
+    pdup_cnt = len(setList)
+    opdup_cnt = 0
+    opdupset_cnt = 0
+    for item in setList:
+        if len(item) > 1:
+            opdup_cnt += len(item)
+            opdupset_cnt += 1
+    cnt1 += pdup_cnt
+    cnt2 += opdup_cnt
+    cnt3 += opdupset_cnt
+    return(cnt1,cnt2,cnt3)
+
+def writeOutput(handle, myList):
+    """Function to write Output"""
+    handle.write(','.join(str(x) for x in myList) + "\n")
+
+
 
 def main():
     args = getOptions()
     if args.log:
         setLogger(args.log,logging.INFO)
 
-    total_read = 0     # Initialize a counter to keep track of the total number of reads
-    uniq_read = 0      # Initialize a counter to keep track of the total number of unique reads
-    pcrDup = 0
+    # Initialize main counters
+    total_read = 0     # number of reads
+    uniq_read = 0      # number of unique reads
+    uniq_seq = 0       # number of unique sequences
+    pdupCnt = 0        # number of PCR duplicates
+    opdupCnt = 0       # number of optical duplicates
+    opdupSetCnt = 0    # number of sets of optical duplicates
 
     # Read in the FASTQ file and return a dictionary with SEQ as the key and
     # list(HEADERS) as the values. Also return the total number of reads.
     myFASTQ, total_read = readFASTQ(args.fq,total_read)
 
     # Calculate the number of unique SEQUENCES. 
-    #NOTE: this is not the same as number of unique READS.
     uniq_seq = len(myFASTQ)
 
     # Loop through each sequence in the dictionary and examine it for
@@ -154,40 +173,29 @@ def main():
             # If there are more than one header for a given, then these are reads.
             total_dup = myLength
             # Identify if the duplicates are optical dups or something else.
-            redSet, cntPcrDup = checkOptical(myValue, args.pix)
-            pcrDup += cntPcrDup
+            readSet = checkOptical(myValue, args.pix)
+            (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet, pdupCnt, opdupCnt, opdupSetCnt)
         else:
             logging.ERROR("There is something wrong with the fastq dictionary at key %s" % key)
 
-    print redSet, total_read, pcrDup, total_dup, uniq_read
+    per_uniq_read = round(float(uniq_read)/total_read * 100, 2)
+    myOutHeader= ["Total_Reads", "Num_Unique_Reads", "Per_Uniq_Reads", "Num_Unique_Seq", "Num_PCR_Dups", "Num_OP_Dups", "Num_OP_Dup_Sets"]
+    myOut = [total_read, uniq_read, per_uniq_read, uniq_seq, pdupCnt, opdupCnt, opdupSetCnt]
+
+    # Test if we want to append the file, if so handle the headers correctly.
+    if args.append:
+        if os.path.exists(args.out):
+            with open(args.out, 'a') as handle:
+                writeOutput(handle,myOut)
+        else:
+            with open(args.out, 'a') as handle:
+                writeOutput(handle,myOutHeader)
+                writeOutput(handle,myOut)
+    else:
+        with open(args.out, 'w') as handle:
+            writeOutput(handle,myOutHeader)
+            writeOutput(handle,myOut)
+
 
 if __name__ == '__main__':
     main()
-
-
-
-    """
-
-### Open fq
-with open(args.fq,'rb') as input_fq:
-# Get the list of all of the sequences
-# Sequences are every 4 lines starting with line 1
-   seqs=itertools.islice(input_fq,1,None,4)
-# Get the count for each sequence
-   counts=collections.Counter(seqs)
-   total_num=sum(counts.values())
-   uniq_num=len(counts)
-
-percent_uniq = float(uniq_num) / (total_num)
-with open(args.out,'wb') as dataout:
-    dataout.write('total # fq is '+str(total_num)+'\n# unique sequences is '+str(uniq_num)+'\npercent unique is '+str(percent_uniq))
-
-if args.table:
-# Sort by count in descending order
-        sorted_counts=sorted(counts.iteritems(),key=operator.itemgetter(1),reverse=True)
-
-   	with open(args.table,'wb') as tableOut:
-   	    for item in sorted_counts:
-                tableOut.write(str(item[1])+' '+str(item[0]).strip()+'\n')
- 
-"""
