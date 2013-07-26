@@ -179,8 +179,8 @@ def main():
             logging.ERROR("There is something wrong with the fastq dictionary at key %s" % key)
 
     per_uniq_read = round(float(uniq_read)/total_read * 100, 2)
-    myOutHeader= ["Total_Reads", "Num_Unique_Reads", "Per_Uniq_Reads", "Num_Unique_Seq", "Num_PCR_Dups", "Num_OP_Dups", "Num_OP_Dup_Sets"]
-    myOut = [total_read, uniq_read, per_uniq_read, uniq_seq, pdupCnt, opdupCnt, opdupSetCnt]
+    myOutHeader= ["File_Name","Total_Reads", "Num_Unique_Reads", "Per_Uniq_Reads", "Num_Unique_Seq", "Num_PCR_Dups", "Num_OP_Dups", "Num_OP_Dup_Sets"]
+    myOut = [args.fq,total_read, uniq_read, per_uniq_read, uniq_seq, pdupCnt, opdupCnt, opdupSetCnt]
 
     # Test if we want to append the file, if so handle the headers correctly.
     if args.append:
