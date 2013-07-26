@@ -185,16 +185,26 @@ def main():
     # Test if we want to append the file, if so handle the headers correctly.
     if args.append:
         if os.path.exists(args.out):
-            with open(args.out, 'a') as handle:
-                writeOutput(handle,myOut)
+            try:
+                with open(args.out, 'a') as handle:
+                    writeOutput(handle,myOut)
+            except:
+                logging.ERROR("Could not open output file, it must be busy")
+
         else:
-            with open(args.out, 'a') as handle:
+            try:
+                with open(args.out, 'a') as handle:
+                    writeOutput(handle,myOutHeader)
+                    writeOutput(handle,myOut)
+            except:
+                logging.ERROR("Could not open output file, it must be busy")
+    else:
+        try:
+            with open(args.out, 'w') as handle:
                 writeOutput(handle,myOutHeader)
                 writeOutput(handle,myOut)
-    else:
-        with open(args.out, 'w') as handle:
-            writeOutput(handle,myOutHeader)
-            writeOutput(handle,myOut)
+        except:
+            logging.ERROR("Could not open output file, it must be busy")
 
 
 if __name__ == '__main__':
