@@ -43,28 +43,19 @@ def checkOptical(myList, pix):
     """Given a list of FASTQ headers, this function will check if reads are
        within a certain 'args.pix' distance of each other. If there are within
        this distance, then they will be called optical duplicates."""
-
-    logging.info("Starting check for optical dups.")
-
     # Create a dictionary to store optical duplicate information.
     myDict = dict()
-
     # Create a list of sets, where each set contains headers that are within
     # args.pix of each other.
     listOfSets = identifySets(myList, pix)
-
     # reduce the set list so that each set is a group of optical duplicates.
     redSetList = reduceSet(listOfSets)
-
-    logging.info("Finished check for optical dups.")
     return(redSetList)
 
 
 def identifySets(myList, pix):
     """This function steps through a list of headers and creates sets of those
        that fall within the args.pix range. These need to be reduced."""
-
-    logging.info("Creating sets of optical dups.")
     # Create list to store results
     setList = list()
     # Compare each header and create sets of headers that overlap.
@@ -77,7 +68,6 @@ def identifySets(myList, pix):
             if item1 != item2: 
                 # Parse the second header to grab coordinate information.
                 match2 = parseHeader(item2)
-
                 # Test if headers are on the same lane and tile. If they are
                 # then determine if they are within args.pix of each other
                 # using numpy's norm function.
@@ -87,7 +77,6 @@ def identifySets(myList, pix):
                     if eucDist <= pix:
                         item1Set.add(item2)
         setList.append(item1Set)
-    logging.info("Finished creating sets of optical dups.")
     return(setList)
 
 
@@ -102,8 +91,6 @@ def reduceSet(setList):
     """Function to step through a list of sets and combine sets that overlap.
        This will create a unique list of sets, where each set contains the headers
        of reads that are within args.pix of each other"""
-
-    logging.info("Starting to reduce optical dup sets.")
     setList2 = [setList[0]]
     for item1 in setList[1:]:
         inSetList2 = False
@@ -114,8 +101,6 @@ def reduceSet(setList):
                 break
         if not inSetList2:
             setList2.append(item1)
-
-    logging.info("Finished reducing optical dup sets.")
     return(setList2)
     
 def dupCounts(setList,cnt1,cnt2,cnt3):
@@ -137,7 +122,6 @@ def writeOutput(handle, myList):
     handle.write(','.join(str(x) for x in myList) + "\n")
 
 
-
 def main():
     args = getOptions()
     if args.log:
@@ -153,13 +137,16 @@ def main():
 
     # Read in the FASTQ file and return a dictionary with SEQ as the key and
     # list(HEADERS) as the values. Also return the total number of reads.
+    logging.info("Starting to read in FASTQ file and creating dictionary.")
     myFASTQ, total_read = readFASTQ(args.fq,total_read)
+    logging.info("Finished reading FASTQ file.")
 
     # Calculate the number of unique SEQUENCES. 
     uniq_seq = len(myFASTQ)
 
     # Loop through each sequence in the dictionary and examine it for
     # duplicates and optical duplicates.
+    logging.info("Starting to identify duplicates.")
     for key in myFASTQ:
         # Copy the dictionary value using list() so that I don't modify the
         # dictionary value later in the script.
@@ -176,20 +163,22 @@ def main():
             readSet = checkOptical(myValue, args.pix)
             (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet, pdupCnt, opdupCnt, opdupSetCnt)
         else:
-            logging.ERROR("There is something wrong with the fastq dictionary at key %s" % key)
+            logging.error("There is something wrong with the fastq dictionary at key %s" % key)
+    logging.info("Finished identifying duplicates.")
 
     per_uniq_read = round(float(uniq_read)/total_read * 100, 2)
     myOutHeader= ["File_Name","Total_Reads", "Num_Unique_Reads", "Per_Uniq_Reads", "Num_Unique_Seq", "Num_PCR_Dups", "Num_OP_Dups", "Num_OP_Dup_Sets"]
     myOut = [args.fq,total_read, uniq_read, per_uniq_read, uniq_seq, pdupCnt, opdupCnt, opdupSetCnt]
 
     # Test if we want to append the file, if so handle the headers correctly.
+    logging.info("Writing output.")
     if args.append:
         if os.path.exists(args.out):
             try:
                 with open(args.out, 'a') as handle:
                     writeOutput(handle,myOut)
             except:
-                logging.ERROR("Could not open output file, it must be busy")
+                logging.error("Could not open output file, it must be busy")
 
         else:
             try:
@@ -197,14 +186,15 @@ def main():
                     writeOutput(handle,myOutHeader)
                     writeOutput(handle,myOut)
             except:
-                logging.ERROR("Could not open output file, it must be busy")
+                logging.error("Could not open output file, it must be busy")
     else:
         try:
             with open(args.out, 'w') as handle:
                 writeOutput(handle,myOutHeader)
                 writeOutput(handle,myOut)
         except:
-            logging.ERROR("Could not open output file, it must be busy")
+            logging.error("Could not open output file, it must be busy")
+    logging.info("Script Finished.")
 
 
 if __name__ == '__main__':
