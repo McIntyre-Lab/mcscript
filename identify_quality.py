@@ -21,7 +21,7 @@ def get_qual(filename):
     phred33_min = 33
     phred64_min = 59
     phred64_offset = phred64_min - phred33_min # 26
-    maxQuality = 40
+    maxQuality = 41
 
     # Set some place holders
     minSeen = 999
