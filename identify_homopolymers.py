@@ -4,6 +4,8 @@ import re
 import argparse 
 import logging
 import collections
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy
 from Bio import SeqIO
