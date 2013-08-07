@@ -25,7 +25,7 @@ def getOptions():
 
 def setLogger(fname,loglevel):
     """ Function to handle error logging """
-    logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=fname, level=loglevel, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
 def selectFormat(fname):
     filetype = ''
