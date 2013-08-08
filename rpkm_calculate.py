@@ -45,7 +45,7 @@ def init_fdict(label,start,end,fdict):
 
     fdict[label] = {}
     fdict[label]['depth'] = 0
-    fdict[label]['region_length'] = end - start
+    fdict[label]['region_length'] = end - start + 1
     fdict[label]['reads_in_region'] = 0
     fdict[label]['apn'] = 0
     fdict[label]['rpkm'] = 0
