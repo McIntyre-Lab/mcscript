@@ -16,13 +16,17 @@ def getOptions():
     parser.add_argument('-o','--out', dest='out', action='store', required=True, help='Output file for counts in csv format [Required]')
     parser.add_argument('--pixel', dest='pix', action='store', default=100, required=False, help='Number of pixels to consider a read as an optical duplicate [Default:100]')
     parser.add_argument('-a', dest='append', action='store_true', help='This flag will cause the output dataset to be appended too.')
+    parser.add_argument('-t','--table', dest='table', action='store', required=False, help='Output table with the duplicate counts for each uniq sequence')
+    parser.add_argument('-f','--fqOut', dest='fqOut', action='store', required=False, help='Output a FASTQ file optical duplicates are reduced')
     parser.add_argument('-g','--log',dest='log',action='store',required=False, help='Create an error log')
     args = parser.parse_args()
     return(args)
 
+
 def setLogger(fname,loglevel):
     """Function for handling error logging"""
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 def readFASTQ(fname):
     """Read a fastq file and store information into two different dictionaries.
@@ -47,6 +51,7 @@ def readFASTQ(fname):
     logging.info("Finished reading the FASTQ file.")
     return(mySeqDict,myReadDict)
 
+
 def parseHeader(fqName):
     """Function to parse the FASTQ header line. This does a simple regex to
        pull out different parts of the header line. Of importance are:
@@ -59,6 +64,7 @@ def parseHeader(fqName):
     matchList = filter(None,match.groups())     # Removes any empty strings, ie if there is no PE information
     matchIntList = [int(x) for x in matchList]
     return(matchIntList)
+
 
 def checkOptical(myList, readDict, pix):
     """Given a list of FASTQ headers, this function will check if reads are
@@ -73,6 +79,7 @@ def checkOptical(myList, readDict, pix):
     # reduce the set list so that each set is a group of optical duplicates.
     redSetList = reduceSet(listOfSets)
     return(redSetList)
+
 
 def identifySets(myList, readDict, pix):
     """This function steps through a list of headers and creates sets of those
@@ -102,6 +109,7 @@ def identifySets(myList, readDict, pix):
         setList.append(item1Set)
     return(setList)
 
+
 def reduceSet(setList):
     """Step through a list of sets and combine sets that overlap.
        This will create a unique list of sets, where each set contains the headers
@@ -118,7 +126,8 @@ def reduceSet(setList):
             setList2.append(item1)
     return(setList2)
     
-def dupCounts(setList,pdup_cnt,opdup_cnt,opdupset_cnt):
+
+def dupCounts(setList,pdup_cnt,opdup_cnt,opdupset_cnt,flagFQ,dropOp):
     """This function calculates various counts and returns a list of counts."""
     dupset_num = 0
     for item in setList:
@@ -126,19 +135,75 @@ def dupCounts(setList,pdup_cnt,opdup_cnt,opdupset_cnt):
             opdup_cnt += len(item)
             opdupset_cnt += 1
             dupset_num += 1
+            if flagFQ:
+                # If the user asks for FASTQ output, store a set of optical
+                # duplicate headers. I will keep one optical duplicate from
+                # each set, to create a reduced list and not completely remove
+                # reads that are optical duplicates.
+                myList = list(item)
+                dropOp |= set(myList[1:])
 
     pdup_cnt += len(setList) - dupset_num
-    return(pdup_cnt,opdup_cnt,opdupset_cnt)
+    return(pdup_cnt,opdup_cnt,opdupset_cnt,dropOp)
+
 
 def writeOutput(handle, myList):
-    """Function to write Output"""
+    """Function to write output from a list to a csv"""
     handle.write(','.join(str(x) for x in myList) + "\n")
+
+
+def writeCount(args,myOutHeader,myOut):
+    """Write a summary table of counts. If the append flag is added, check if
+       the output file exists and try to append to it."""
+    if args.append:
+        if os.path.exists(args.out):
+            try:
+                with open(args.out, 'a') as handle:
+                    writeOutput(handle,myOut)
+            except:
+                logging.error("Could not open output file, it must be busy.")
+        else:
+            try:
+                with open(args.out, 'w') as handle:
+                    writeOutput(handle,myOutHeader)
+                    writeOutput(handle,myOut)
+            except:
+                logging.error("Could not open output file, do I have write permission?")
+    else:
+        try:
+            with open(args.out, 'w') as handle:
+                writeOutput(handle,myOutHeader)
+                writeOutput(handle,myOut)
+        except:
+            logging.error("Could not open output file, do I have write permission?")
+
+
+def writeTable(table, mySeqDict):
+    """Write a table with how many time each sequence is duplicated."""
+    myDict = dict()
+    for seq in mySeqDict:
+        myDict[seq] = len(mySeqDict[seq])
+
+    with open(table,'w') as handle:
+        for item in sorted(myDict,key=myDict.get,reverse=True):
+            writeOutput(handle, [myDict[item],item])
+
+def writeFQout(fqIn,fqOut,dropOp):
+    """Output a FASTQ file that reduces the optical duplicates, so that only a
+    single read is left from an optical duplicate set."""
+    with open(fqIn, 'r') as FQ:
+        with open(fqOut, 'w') as FO:
+            for record in SeqIO.parse(FQ, 'fastq'):
+                if not {record.name} & dropOp:
+                    SeqIO.write(record,FO,"fastq")
+
 
 def main():
     args = getOptions()
     if args.log:
         setLogger(args.log,logging.INFO)
 
+    ## READ IN DATA ##
     # Read in the FASTQ file and return a dictionary with SEQ as the key and
     # list(HEADERS) as the values. Also return the total number of reads.
     logging.info("Starting to read in FASTQ file and creating dictionary.")
@@ -155,6 +220,11 @@ def main():
     opdupCnt = 0 
     opdupSetCnt = 0
 
+    # Initialize a set to store headers of reads I may want to drop from my
+    # FASTQ file
+    dropOp = set()
+
+    ## Loop Through Data and identify duplicates ##
     # Loop through each sequence in the dictionary and examine it for
     # duplicates and optical duplicates.
     logging.info("Starting to identify duplicates.")
@@ -172,39 +242,27 @@ def main():
             total_dup = myLength
             # Identify if the duplicates are optical dups or something else.
             readSet = checkOptical(myValue, myRead, args.pix)
-            (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet,pdupCnt, opdupCnt, opdupSetCnt)
+            (pdupCnt, opdupCnt, opdupSetCnt, dropOp) = dupCounts(readSet,pdupCnt, opdupCnt, opdupSetCnt, args.fqOut, dropOp)
         else:
             logging.error("There is something wrong with the fastq dictionary at key %s" % key)
     logging.info("Finished identifying duplicates.")
 
+    ## Write desired output ##
     per_uniq_read = round(float(uniq_read)/total_read * 100, 2)
     myOutHeader= ["File_Name","Total_Reads", "Num_Unique_Reads", "Per_Uniq_Reads", "Num_Unique_Seq", "Num_PCR_Dups", "Num_OP_Dups", "Num_OP_Dup_Sets"]
     myOut = [args.fq,total_read, uniq_read, per_uniq_read, uniq_seq, pdupCnt, opdupCnt, opdupSetCnt]
 
     # Test if we want to append the file, if so handle the headers correctly.
-    logging.info("Writing output.")
-    if args.append:
-        if os.path.exists(args.out):
-            try:
-                with open(args.out, 'a') as handle:
-                    writeOutput(handle,myOut)
-            except:
-                logging.error("Could not open output file, it must be busy.")
+    logging.info("Writing summary counts table.")
+    writeCount(args,myOutHeader,myOut)
 
-        else:
-            try:
-                with open(args.out, 'a') as handle:
-                    writeOutput(handle,myOutHeader)
-                    writeOutput(handle,myOut)
-            except:
-                logging.error("Could not open output file, do I have write permission?")
-    else:
-        try:
-            with open(args.out, 'w') as handle:
-                writeOutput(handle,myOutHeader)
-                writeOutput(handle,myOut)
-        except:
-            logging.error("Could not open output file, do I have write permission?")
+    if args.table:
+        logging.info("Writing sequence counts table.")
+        writeTable(args.table,mySeq)
+
+    if args.fqOut:
+        logging.info("Writing reduced fastq file.")
+        writeFQout(args.fq, args.fqOut,dropOp)
     logging.info("Script Finished.")
 
 
