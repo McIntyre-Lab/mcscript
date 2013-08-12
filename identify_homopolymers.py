@@ -4,10 +4,6 @@ import re
 import argparse 
 import logging
 import collections
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import numpy
 from Bio import SeqIO
 
 def getOptions():
@@ -58,7 +54,6 @@ def main():
     if not args.ft:                             # Figure out what kind of file we have if the user did not tell us.
         args.ft = selectFormat(args.input)
 
-    # initialize 
     logging.info("Begining to analyze homopolymers.")
     with open(args.input, "r") as FH:
         if args.ft == 'fa':
@@ -66,20 +61,37 @@ def main():
         elif args.ft == 'fq':
             seqIter = SeqIO.parse(FH, 'fastq')
 
+        # initialize lists()
         Ares, Tres, Cres, Gres = ([] for i in range(4))
+        # initialize counts
+        total_read = 0
+        homopoly = 0
         for record in seqIter:
-            Ares.extend([x.group() for x in re.finditer('[Aa]{6,}',str(record.seq))])
-            Tres.extend([x.group() for x in re.finditer('[Tt]{6,}',str(record.seq))])
-            Cres.extend([x.group() for x in re.finditer('[Cc]{6,}',str(record.seq))])
-            Gres.extend([x.group() for x in re.finditer('[Gg]{6,}',str(record.seq))])
+            if args.ft == 'fq': total_read += 1
+            A = [x.group() for x in re.finditer('[Aa]{6,}',str(record.seq))]
+            T = [x.group() for x in re.finditer('[Tt]{6,}',str(record.seq))]
+            C = [x.group() for x in re.finditer('[Cc]{6,}',str(record.seq))]
+            G = [x.group() for x in re.finditer('[Gg]{6,}',str(record.seq))]
+
+            if A or T or C or G:
+                if args.ft == 'fq': homopoly += 1
+                Ares.extend(A)
+                Tres.extend(T)
+                Cres.extend(C)
+                Gres.extend(G)
 
         Acnt = collections.Counter(Ares)
         Tcnt = collections.Counter(Tres)
         Ccnt = collections.Counter(Cres)
         Gcnt = collections.Counter(Gres)
 
-    myOutHeader = ["File_Name", "Num_homopolymer_A", "Num_homopolymer_T", "Num_homopolymer_C", "Num_homopolymer_G"]
-    myOut = [args.input, sum(Acnt.values()), sum(Tcnt.values()), sum(Ccnt.values()), sum(Gcnt.values())]
+    if args.ft == 'fq':
+        myOutHeader = ["File_Name", "Num_reads", "Num_reads_w_homopolymers", "per_reads_w_homopolymers", "Num_homopolymer_A", "Num_homopolymer_T", "Num_homopolymer_C", "Num_homopolymer_G"]
+        per_homopoly = float(homopoly) / float(total_read) * 100
+        myOut = [args.input, total_read, homopoly, per_homopoly, sum(Acnt.values()), sum(Tcnt.values()), sum(Ccnt.values()), sum(Gcnt.values())]
+    else:
+        myOutHeader = ["File_Name", "Num_homopolymer_A", "Num_homopolymer_T", "Num_homopolymer_C", "Num_homopolymer_G"]
+        myOut = [args.input, sum(Acnt.values()), sum(Tcnt.values()), sum(Ccnt.values()), sum(Gcnt.values())]
 
     logging.info("Wrigting Output")
 
@@ -107,6 +119,10 @@ def main():
             logging.error("Could not open output file")
 
     if args.plt:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
         logging.info("Creating Plots")
         X,Y = plotDist(Acnt)
         plt.plot(X,Y, label="AAAAAA+")
@@ -117,6 +133,8 @@ def main():
         X,Y = plotDist(Gcnt)
         plt.plot(X,Y, label="GGGGGG+")
         plt.legend(loc='upper right')
+        plt.xlabel("Size of Homopolymer Repeat", fontsize=18)
+        plt.ylabel("Number of Reads", fontsize=18)
         plt.savefig(args.plt)
 
     logging.info("Script Finished.")
