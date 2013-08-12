@@ -28,9 +28,9 @@ def readFASTQ(fname):
        the sequence and the value is a list of headers. Also returns a total
        number of reads."""
 
-    logging.info("Reading the FASTQ file.")
+    #logging.info("Reading the FASTQ file.")
     mySeqDict = collections.defaultdict(list)
-    myFqDict = dict()
+    myReadDict = dict()
     with open(fname,'r') as FQ:
         for record in SeqIO.parse(FQ, 'fastq'):
             mySeqDict[str(record.seq)].append(record.name)
@@ -38,7 +38,7 @@ def readFASTQ(fname):
             if len(match) == 4: # if there is no read information, append a 1
                 match.append(1)
             myReadDict[record.name] = {'lane':match[0], 'tile':match[1],'x':match[2],'y':match[3],'read':match[4]}
-    logging.info("Finished reading the FASTQ file.")
+    #logging.info("Finished reading the FASTQ file.")
     return(mySeqDict,myReadDict)
 
 def parseHeader(fqName):
@@ -76,14 +76,14 @@ def identifySets(myList, readDict, pix):
         # Parse the first header to grab coordinate information.
         lane1 = readDict[item1]['lane']
         tile1 = readDict[item1]['tile']
-        coord1 = numpy.array(readDict[item1]['x'],readDict[item1]['y'])
+        coord1 = numpy.array([readDict[item1]['x'],readDict[item1]['y']])
         item1Set = {item1}
         for item2 in myList:
             if item1 != item2: 
                 # Don't compare a header to itself.
                 lane2 = readDict[item2]['lane']
                 tile2 = readDict[item2]['tile']
-                coord2 = numpy.array(readDict[item2]['x'],readDict[item2]['y'])
+                coord2 = numpy.array([readDict[item2]['x'],readDict[item2]['y']])
 
                 if lane1 == lane2 and tile1 == tile2:
                     eucDist = numpy.linalg.norm(coord1-coord2)
@@ -133,7 +133,7 @@ def main():
     # Read in the FASTQ file and return a dictionary with SEQ as the key and
     # list(HEADERS) as the values. Also return the total number of reads.
     logging.info("Starting to read in FASTQ file and creating dictionary.")
-    mySeq, myRead = readFASTQ(args.fq,total_read)
+    mySeq, myRead = readFASTQ(args.fq)
     logging.info("Finished reading FASTQ file.")
 
     # Simple Counts 
