@@ -19,6 +19,7 @@ def getOptions():
     args = parser.parse_args()
     return(args)
 
+
 def setLogger(fname,loglevel):
     """Function for handling error logging"""
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,32 +32,13 @@ def readFASTQ(fname,count):
 
     logging.info("Reading the FASTQ file.")
     myDict = collections.defaultdict(list)
-    recTuple = collections.namedtuple('recTuple', 'name lane tile x y read')
     with open(fname,'r') as FQ:
         for record in SeqIO.parse(FQ, 'fastq'):
-            match = parseHeader(record.name)
-            if len(match) == 5:
-                mytup = recTuple(record.name,*match)
-            elif len(match) == 4:
-                mytup = recTuple(record.name,*match,read=1)
-            else:
-                raise ValueError('Check regex, parsing header is broken')
-            myDict[str(record.seq)].append(mytup)
+            myDict[str(record.seq)].append(record.name)
             count += 1
     logging.info("Finished reading the FASTQ file.")
     return(myDict,count)
 
-def parseHeader(fqName):
-    """Function to parse the FASTQ header line
-        Where [0] = Lane
-              [1] = Tile
-              [2] = X-coord
-              [3] = Y-coord
-              [4] = Read number """
-    match = re.search('.*:?([0-9]):([0-9]+):([0-9]+):([0-9]+).*\/?([12])*$',fqName)
-    matchList = filter(None,match.groups())     # Removes any empty strings, ie if there is no PE information
-    intList = [int(x) for x in matchList]
-    return(intList)
 
 def checkOptical(myList, pix):
     """Given a list of FASTQ headers, this function will check if reads are
@@ -71,6 +53,7 @@ def checkOptical(myList, pix):
     redSetList = reduceSet(listOfSets)
     return(redSetList)
 
+
 def identifySets(myList, pix):
     """This function steps through a list of headers and creates sets of those
        that fall within the args.pix range. These need to be reduced."""
@@ -79,22 +62,31 @@ def identifySets(myList, pix):
     # Compare each header and create sets of headers that overlap.
     for item1 in myList:
         # Parse the first header to grab coordinate information.
+        match1 = parseHeader(item1)
         item1Set = {item1}
-        coord1 = numpy.array([item1.x,item1.y])
         for item2 in myList:
-            coord2 = numpy.array([item2.x,item2.y])
             # Don't compare a header to itself.
-            if item1.name != item2.name: 
+            if item1 != item2: 
                 # Parse the second header to grab coordinate information.
+                match2 = parseHeader(item2)
                 # Test if headers are on the same lane and tile. If they are
                 # then determine if they are within args.pix of each other
                 # using numpy's norm function.
-                if item1.lane == item2.lane and item1.tile == item2.tile:
-                    eucDist = numpy.linalg.norm(coord1-coord2)
+                if match1[0] == match2[0] and match1[1] == match2[1]:
+                    myCoord = [numpy.array([int(match1[2]),int(match1[3])]),numpy.array([int(match2[2]),int(match2[3])])]       # create a list of numpy arrays [(x1,y1),(x2,y2)]
+                    eucDist = numpy.linalg.norm(myCoord[0]-myCoord[1])
                     if eucDist <= pix:
                         item1Set.add(item2)
         setList.append(item1Set)
     return(setList)
+
+
+def parseHeader(fqName):
+    """Function to parse the FASTQ header line"""
+    match = re.search('.*:?([0-9]):([0-9]+):([0-9]+):([0-9]+).*/?([1-2]*)',fqName)
+    matchList = filter(None,match.groups())     # Removes any empty strings, ie if there is no PE information
+    return(matchList)
+
 
 def reduceSet(setList):
     """Function to step through a list of sets and combine sets that overlap.
@@ -121,14 +113,15 @@ def dupCounts(setList,cnt1,cnt2,cnt3):
         if len(item) > 1:
             opdup_cnt += len(item)
             opdupset_cnt += 1
-    cnt1 = pdup_cnt - opdupset_cnt
-    cnt2 = opdup_cnt
-    cnt3 = opdupset_cnt
+    cnt1 += pdup_cnt
+    cnt2 += opdup_cnt
+    cnt3 += opdupset_cnt
     return(cnt1,cnt2,cnt3)
 
 def writeOutput(handle, myList):
     """Function to write Output"""
     handle.write(','.join(str(x) for x in myList) + "\n")
+
 
 def main():
     args = getOptions()
@@ -203,6 +196,7 @@ def main():
         except:
             logging.error("Could not open output file, it must be busy")
     logging.info("Script Finished.")
+
 
 if __name__ == '__main__':
     main()
