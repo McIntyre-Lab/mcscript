@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import cProfile
 import argparse
 import logging
 from Bio import SeqIO
