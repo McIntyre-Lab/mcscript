@@ -19,28 +19,41 @@ def getOptions():
     args = parser.parse_args()
     return(args)
 
-
 def setLogger(fname,loglevel):
     """Function for handling error logging"""
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
-def readFASTQ(fname,count):
+def readFASTQ(fname):
     """Read a fastq file and store information in a dictionary where the key is
        the sequence and the value is a list of headers. Also returns a total
        number of reads."""
 
     logging.info("Reading the FASTQ file.")
-    myDict = collections.defaultdict(list)
+    mySeqDict = collections.defaultdict(list)
+    myFqDict = dict()
     with open(fname,'r') as FQ:
         for record in SeqIO.parse(FQ, 'fastq'):
-            myDict[str(record.seq)].append(record.name)
-            count += 1
+            mySeqDict[str(record.seq)].append(record.name)
+            match = parseHeader(record.name)
+            if len(match) == 4: # if there is no read information, append a 1
+                match.append(1)
+            myReadDict[record.name] = {'lane':match[0], 'tile':match[1],'x':match[2],'y':match[3],'read':match[4]}
     logging.info("Finished reading the FASTQ file.")
-    return(myDict,count)
+    return(mySeqDict,myReadDict)
 
+def parseHeader(fqName):
+    """Function to parse the FASTQ header line
+                [0] = Lane
+                [1] = tile
+                [2] = x-coord
+                [3] = y-coord
+                [4] = read number"""
+    match = re.search('.*:?([0-9]):([0-9]+):([0-9]+):([0-9]+).*\/?([1-2])*',fqName)
+    matchList = filter(None,match.groups())     # Removes any empty strings, ie if there is no PE information
+    matchIntList = [int(x) for x in matchList]
+    return(matchIntList)
 
-def checkOptical(myList, pix):
+def checkOptical(myList, readDict, pix):
     """Given a list of FASTQ headers, this function will check if reads are
        within a certain 'args.pix' distance of each other. If there are within
        this distance, then they will be called optical duplicates."""
@@ -48,13 +61,12 @@ def checkOptical(myList, pix):
     myDict = dict()
     # Create a list of sets, where each set contains headers that are within
     # args.pix of each other.
-    listOfSets = identifySets(myList, pix)
+    listOfSets = identifySets(myList, readDict, pix)
     # reduce the set list so that each set is a group of optical duplicates.
     redSetList = reduceSet(listOfSets)
     return(redSetList)
 
-
-def identifySets(myList, pix):
+def identifySets(myList, readDict, pix):
     """This function steps through a list of headers and creates sets of those
        that fall within the args.pix range. These need to be reduced."""
     # Create list to store results
@@ -62,31 +74,23 @@ def identifySets(myList, pix):
     # Compare each header and create sets of headers that overlap.
     for item1 in myList:
         # Parse the first header to grab coordinate information.
-        match1 = parseHeader(item1)
+        lane1 = readDict[item1]['lane']
+        tile1 = readDict[item1]['tile']
+        coord1 = numpy.array(readDict[item1]['x'],readDict[item1]['y'])
         item1Set = {item1}
         for item2 in myList:
-            # Don't compare a header to itself.
             if item1 != item2: 
-                # Parse the second header to grab coordinate information.
-                match2 = parseHeader(item2)
-                # Test if headers are on the same lane and tile. If they are
-                # then determine if they are within args.pix of each other
-                # using numpy's norm function.
-                if match1[0] == match2[0] and match1[1] == match2[1]:
-                    myCoord = [numpy.array([int(match1[2]),int(match1[3])]),numpy.array([int(match2[2]),int(match2[3])])]       # create a list of numpy arrays [(x1,y1),(x2,y2)]
-                    eucDist = numpy.linalg.norm(myCoord[0]-myCoord[1])
+                # Don't compare a header to itself.
+                lane2 = readDict[item2]['lane']
+                tile2 = readDict[item2]['tile']
+                coord2 = numpy.array(readDict[item2]['x'],readDict[item2]['y'])
+
+                if lane1 == lane2 and tile1 == tile2:
+                    eucDist = numpy.linalg.norm(coord1-coord2)
                     if eucDist <= pix:
                         item1Set.add(item2)
         setList.append(item1Set)
     return(setList)
-
-
-def parseHeader(fqName):
-    """Function to parse the FASTQ header line"""
-    match = re.search('.*:?([0-9]):([0-9]+):([0-9]+):([0-9]+).*/?([1-2]*)',fqName)
-    matchList = filter(None,match.groups())     # Removes any empty strings, ie if there is no PE information
-    return(matchList)
-
 
 def reduceSet(setList):
     """Function to step through a list of sets and combine sets that overlap.
@@ -104,7 +108,7 @@ def reduceSet(setList):
             setList2.append(item1)
     return(setList2)
     
-def dupCounts(setList,cnt1,cnt2,cnt3):
+def dupCounts(setList):
     """This function calculates various counts and returns a list of counts."""
     pdup_cnt = len(setList)
     opdup_cnt = 0
@@ -113,10 +117,8 @@ def dupCounts(setList,cnt1,cnt2,cnt3):
         if len(item) > 1:
             opdup_cnt += len(item)
             opdupset_cnt += 1
-    cnt1 += pdup_cnt
-    cnt2 += opdup_cnt
-    cnt3 += opdupset_cnt
-    return(cnt1,cnt2,cnt3)
+    pdup_cnt -= opdupset_cnt
+    return(pdup_cnt,opdup_cnt,opdupset_cnt)
 
 def writeOutput(handle, myList):
     """Function to write Output"""
@@ -128,30 +130,26 @@ def main():
     if args.log:
         setLogger(args.log,logging.INFO)
 
-    # Initialize main counters
-    total_read = 0     # number of reads
-    uniq_read = 0      # number of unique reads
-    uniq_seq = 0       # number of unique sequences
-    pdupCnt = 0        # number of PCR duplicates
-    opdupCnt = 0       # number of optical duplicates
-    opdupSetCnt = 0    # number of sets of optical duplicates
-
     # Read in the FASTQ file and return a dictionary with SEQ as the key and
     # list(HEADERS) as the values. Also return the total number of reads.
     logging.info("Starting to read in FASTQ file and creating dictionary.")
-    myFASTQ, total_read = readFASTQ(args.fq,total_read)
+    mySeq, myRead = readFASTQ(args.fq,total_read)
     logging.info("Finished reading FASTQ file.")
 
-    # Calculate the number of unique SEQUENCES. 
-    uniq_seq = len(myFASTQ)
+    # Simple Counts 
+    total_read =  len(myRead)    # total number of reads
+    uniq_seq = len(mySeq)        # number of uniq sequences
+
+    # Initialize unique read count
+    uniq_read = 0
 
     # Loop through each sequence in the dictionary and examine it for
     # duplicates and optical duplicates.
     logging.info("Starting to identify duplicates.")
-    for key in myFASTQ:
+    for key in mySeq:
         # Copy the dictionary value using list() so that I don't modify the
         # dictionary value later in the script.
-        myValue = list(myFASTQ[str(key)])   
+        myValue = list(mySeq[str(key)])   
         myLength = len(myValue)
 
         if myLength == 1:
@@ -161,8 +159,8 @@ def main():
             # If there are more than one header for a given, then these are reads.
             total_dup = myLength
             # Identify if the duplicates are optical dups or something else.
-            readSet = checkOptical(myValue, args.pix)
-            (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet, pdupCnt, opdupCnt, opdupSetCnt)
+            readSet = checkOptical(myValue, myRead, args.pix)
+            (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet)
         else:
             logging.error("There is something wrong with the fastq dictionary at key %s" % key)
     logging.info("Finished identifying duplicates.")
