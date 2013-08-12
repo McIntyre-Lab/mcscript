@@ -5,8 +5,9 @@ import logging
 from Bio import SeqIO
 import collections
 import re
-import numpy
+import math
 import os
+import itertools
 
 def getOptions():
     """Function to pull in command line arguments"""
@@ -24,30 +25,36 @@ def setLogger(fname,loglevel):
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def readFASTQ(fname):
-    """Read a fastq file and store information in a dictionary where the key is
-       the sequence and the value is a list of headers. Also returns a total
-       number of reads."""
-
-    #logging.info("Reading the FASTQ file.")
+    """Read a fastq file and store information into two different dictionaries.
+       The first is mySeqDict which has the sequence as the key and a list of
+       headers with that have that sequence as the values. The second is
+       myReadDict, which has read name as the key and coordinate infromation as
+       values."""
+    logging.info("Reading the FASTQ file.")
     mySeqDict = collections.defaultdict(list)
     myReadDict = dict()
     with open(fname,'r') as FQ:
         for record in SeqIO.parse(FQ, 'fastq'):
+            # Create mySeqDict
             mySeqDict[str(record.seq)].append(record.name)
+
+            # Parse Header and create myReadDict
             match = parseHeader(record.name)
-            if len(match) == 4: # if there is no read information, append a 1
+            if len(match) == 4: # if there is no PE read information, append a 1
                 match.append(1)
-            myReadDict[record.name] = {'lane':match[0], 'tile':match[1],'x':match[2],'y':match[3],'read':match[4]}
-    #logging.info("Finished reading the FASTQ file.")
+            myReadDict[record.name] = {'lane':match[0], 'tile':match[1],'coord':(match[2],match[3]),'read':match[4]}
+
+    logging.info("Finished reading the FASTQ file.")
     return(mySeqDict,myReadDict)
 
 def parseHeader(fqName):
-    """Function to parse the FASTQ header line
-                [0] = Lane
-                [1] = tile
-                [2] = x-coord
-                [3] = y-coord
-                [4] = read number"""
+    """Function to parse the FASTQ header line. This does a simple regex to
+       pull out different parts of the header line. Of importance are:
+       [0] = Lane
+       [1] = tile
+       [2] = x-coord
+       [3] = y-coord
+       [4] = read number"""
     match = re.search('.*:?([0-9]):([0-9]+):([0-9]+):([0-9]+).*\/?([1-2])*',fqName)
     matchList = filter(None,match.groups())     # Removes any empty strings, ie if there is no PE information
     matchIntList = [int(x) for x in matchList]
@@ -55,75 +62,77 @@ def parseHeader(fqName):
 
 def checkOptical(myList, readDict, pix):
     """Given a list of FASTQ headers, this function will check if reads are
-       within a certain 'args.pix' distance of each other. If there are within
+       within a certain 'args.pix' distance of each other. If reads are within
        this distance, then they will be called optical duplicates."""
-    # Create a dictionary to store optical duplicate information.
+    # Create a storage dictionary
     myDict = dict()
-    # Create a list of sets, where each set contains headers that are within
-    # args.pix of each other.
+
+    # Create a list of sets, where each set contains headers that are optical duplicates.
     listOfSets = identifySets(myList, readDict, pix)
+
     # reduce the set list so that each set is a group of optical duplicates.
     redSetList = reduceSet(listOfSets)
     return(redSetList)
 
 def identifySets(myList, readDict, pix):
     """This function steps through a list of headers and creates sets of those
-       that fall within the args.pix range. These need to be reduced."""
+       that fall within the args.pix range. The resulting sets may overlap so
+       they need reduced."""
     # Create list to store results
     setList = list()
+
     # Compare each header and create sets of headers that overlap.
-    for item1 in myList:
-        # Parse the first header to grab coordinate information.
+    for index, item1 in enumerate(myList):
+        # Grab coordinate information from readDict
+        item1Set = {item1}
         lane1 = readDict[item1]['lane']
         tile1 = readDict[item1]['tile']
-        coord1 = numpy.array([readDict[item1]['x'],readDict[item1]['y']])
-        item1Set = {item1}
-        for item2 in myList:
-            if item1 != item2: 
-                # Don't compare a header to itself.
-                lane2 = readDict[item2]['lane']
-                tile2 = readDict[item2]['tile']
-                coord2 = numpy.array([readDict[item2]['x'],readDict[item2]['y']])
+        coord1 = readDict[item1]['coord']
 
-                if lane1 == lane2 and tile1 == tile2:
-                    eucDist = numpy.linalg.norm(coord1-coord2)
-                    if eucDist <= pix:
-                        item1Set.add(item2)
+        for item2 in myList[index+1:]:
+            # Grab coordinate information from readDict
+            lane2 = readDict[item2]['lane']
+            tile2 = readDict[item2]['tile']
+            coord2 = readDict[item2]['coord']
+
+            if lane1 == lane2 and tile1 == tile2:
+                eucDist = math.sqrt((coord1[0]-coord2[0])**2 + (coord1[1]-coord2[1])**2 )
+                if eucDist <= pix:
+                    item1Set.add(item2)
         setList.append(item1Set)
     return(setList)
 
 def reduceSet(setList):
-    """Function to step through a list of sets and combine sets that overlap.
+    """Step through a list of sets and combine sets that overlap.
        This will create a unique list of sets, where each set contains the headers
-       of reads that are within args.pix of each other"""
+       of reads that optical duplicates."""
     setList2 = [setList[0]]
     for item1 in setList[1:]:
         inSetList2 = False
         for item2 in setList2:
-            if item1 & item2:
-                item2 |= item1
+            if item1 & item2:       # If there is an intersection
+                item2 |= item1      # Combine sets and go to next item in setList
                 inSetList2 = True
                 break
-        if not inSetList2:
+        if not inSetList2:          # If I could not find any overlaps then append set to setList2
             setList2.append(item1)
     return(setList2)
     
-def dupCounts(setList):
+def dupCounts(setList,pdup_cnt,opdup_cnt,opdupset_cnt):
     """This function calculates various counts and returns a list of counts."""
-    pdup_cnt = len(setList)
-    opdup_cnt = 0
-    opdupset_cnt = 0
+    dupset_num = 0
     for item in setList:
         if len(item) > 1:
             opdup_cnt += len(item)
             opdupset_cnt += 1
-    pdup_cnt -= opdupset_cnt
+            dupset_num += 1
+
+    pdup_cnt += len(setList) - dupset_num
     return(pdup_cnt,opdup_cnt,opdupset_cnt)
 
 def writeOutput(handle, myList):
     """Function to write Output"""
     handle.write(','.join(str(x) for x in myList) + "\n")
-
 
 def main():
     args = getOptions()
@@ -140,8 +149,11 @@ def main():
     total_read =  len(myRead)    # total number of reads
     uniq_seq = len(mySeq)        # number of uniq sequences
 
-    # Initialize unique read count
+    # Initialize counts
     uniq_read = 0
+    pdupCnt = 0 
+    opdupCnt = 0 
+    opdupSetCnt = 0
 
     # Loop through each sequence in the dictionary and examine it for
     # duplicates and optical duplicates.
@@ -160,7 +172,7 @@ def main():
             total_dup = myLength
             # Identify if the duplicates are optical dups or something else.
             readSet = checkOptical(myValue, myRead, args.pix)
-            (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet)
+            (pdupCnt, opdupCnt, opdupSetCnt) = dupCounts(readSet,pdupCnt, opdupCnt, opdupSetCnt)
         else:
             logging.error("There is something wrong with the fastq dictionary at key %s" % key)
     logging.info("Finished identifying duplicates.")
@@ -177,7 +189,7 @@ def main():
                 with open(args.out, 'a') as handle:
                     writeOutput(handle,myOut)
             except:
-                logging.error("Could not open output file, it must be busy")
+                logging.error("Could not open output file, it must be busy.")
 
         else:
             try:
@@ -185,14 +197,14 @@ def main():
                     writeOutput(handle,myOutHeader)
                     writeOutput(handle,myOut)
             except:
-                logging.error("Could not open output file, it must be busy")
+                logging.error("Could not open output file, do I have write permission?")
     else:
         try:
             with open(args.out, 'w') as handle:
                 writeOutput(handle,myOutHeader)
                 writeOutput(handle,myOut)
         except:
-            logging.error("Could not open output file, it must be busy")
+            logging.error("Could not open output file, do I have write permission?")
     logging.info("Script Finished.")
 
 
