@@ -27,7 +27,7 @@ percent_uniq_reads = float(num_uniq_reads) / (total_num)
 
 with open(args.out,'wb') as dataout:
     dataout.write("file_name,total_reads,num_unique_seq,per_uniq_seq,num_unique_reads,per_uniq_reads\n")
-    myout = [args.fq,total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads]
+    myout = [os.path.basename(args.fq),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads]
     dataout.write(','.join(str(x) for x in myout)+"\n")
 
 if args.table:
