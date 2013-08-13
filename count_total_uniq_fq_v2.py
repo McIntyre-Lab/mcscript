@@ -22,8 +22,8 @@ with open(args.fq,'rb') as input_fq:
     uniq_num=len(counts)
     num_uniq_reads = sum(counts[x] == 1 for x in counts)
 
-percent_uniq_seq = float(uniq_num) / (total_num)
-percent_uniq_reads = float(num_uniq_reads) / (total_num)
+percent_uniq_seq = float(uniq_num) / float(total_num) * 100
+percent_uniq_reads = float(num_uniq_reads) / float(total_num) * 100
 
 with open(args.out,'wb') as dataout:
     dataout.write("file_name,total_reads,num_unique_seq,per_uniq_seq,num_unique_reads,per_uniq_reads\n")
