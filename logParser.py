@@ -36,7 +36,7 @@ def main():
         outputFile=open(args.output,'ab')
              
     else: #write the header
-        outputFile=open(args.output,'wb')
+        outputFile=open(args.output,'w')
         for i in range(1,len(treatmentArray)+1):
             outputFile.write('t_var_'+str(i)+',')
         if args.bowtie:
