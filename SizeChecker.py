@@ -1,16 +1,19 @@
 #!/usr/bin/env python
-
-import sys,os,csv,argparse,logging,pprint,re,datetime,itertools
+import sys
+import os
+import csv
+import argparse
+import pprint
+import re
+import itertools
 from datetime import datetime
 csv.field_size_limit(1000000000)
  
 def getOptions():
     """Function to pull in arguments from the command line"""
-
     description="""This script compares the number of reads in a given input fastq file and the combined number of reads of the given output files to determine if the alignment output is the correct size. """
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-i", "--input_name", dest="input", action='store', required=True, help="input file")
-    parser.add_argument('-a', dest="alignedflag", action='store_true',required=False)
     parser.add_argument("-unaln", "--unaligned_output", dest="unaligned_output", action='store', required=True, nargs = '*', help="unaligned output file list [Required]")
     parser.add_argument("-aln", "--aligned_output", dest="aligned_output", action='store', required=True, nargs = '*', help="aligned output file list [Required]")
     args = parser.parse_args()
@@ -24,10 +27,12 @@ def fileLength(filename):
             pass
     return i + 1
 
+
 def getExtension(whole_filename):
     """Get the extension of the given file"""
     fileName,fileExtension=os.path.splitext(whole_filename)
     return fileExtension
+
 
 def getNumSAMReads(filename,aligned=0):
     """Get the number of reads in a given SAM file. Specify whether we want aligned reads (aligned=1) or unaligned reads (aligned=0)"""
@@ -53,9 +58,14 @@ def getNumSAMReads(filename,aligned=0):
     else:
         return unalignedCount
 
-def getNumMAFReads(filename):
-    """Get the number of reads in a given MAF file. We assume the maf file consists of paragraphs with a first line that starts with "a ", a second line that starts with "s " and has the name of the reference, and a third line that starts with an "s " and tells the name of the actual read we are mapping to the reference. We remove all duplicate reads by searching in this third line and building/checking against the alreadySeenDict."""
 
+def getNumMAFReads(filename):
+    """Get the number of reads in a given MAF file. We assume the maf file
+    consists of paragraphs with a first line that starts with "a ", a second
+    line that starts with "s " and has the name of the reference, and a third
+    line that starts with an "s " and tells the name of the actual read we are
+    mapping to the reference. We remove all duplicate reads by searching in
+    this third line and building/checking against the alreadySeenDict."""
     count=0
     alreadySeenDict={}
     with open(filename) as fileRead:
@@ -69,8 +79,8 @@ def getNumMAFReads(filename):
                 else:
                     count=count+1 
                     alreadySeenDict[line_read]=True
-         
     return count
+
 
 def getNumFASTQReads(filename):
     return (fileLength(filename))/4
@@ -84,6 +94,7 @@ def getNumFastaReads(filename):
                 count=count+1
     return count
 
+
 def getNumReads(filename,aligned=0):
     """Get the number of reads in the file"""
     extension=getExtension(filename).lower() #we can ignore any capitalization
@@ -95,40 +106,23 @@ def getNumReads(filename,aligned=0):
         return getNumMAFReads(filename)
     elif extension==".fasta" or extension==".fa":
         return getNumFastaReads(filename)
-
     else: 
         print("-1") #Denoting the size checker was given a file other than a maf, sam fastq,or fasta file. 
-
     
 
 def main():
- #   printOutFile=open("/bio/mcintyre/pipeline_dev/scripts/printoutfile.txt","wb")
     args=getOptions()
-    input_file=args.input
-    if args.alignedflag:
-        aligned=1
-    else:
-        aligned=0
-    print("Input:\t\t"+str(datetime.now()))
-    input_reads=getNumReads(input_file,aligned)
-    print("Input reads: "+str(input_reads))
+    input_reads=getNumReads(args.input)
     output_size_list=[]
     for output_file in args.unaligned_output:
-        print("Unaligned:\t"+str(datetime.now()))
         output_size_list.append(getNumReads(output_file,aligned=0))
     for output_file2 in args.aligned_output:
-        print("Aligned:\t"+str(datetime.now()))
         output_size_list.append(getNumReads(output_file2,aligned=1))
-    print("Done:\t\t"+str(datetime.now()))
-    print("Output reads: "+str(output_size_list))
     if sum(output_size_list)==input_reads:
         print("1") # A 1 is printed if the check was successful
     else:
         print("-1") # a 0 is printed if the check found a failure
-  #  printOutFile.close()
-""" If I am running this script directly then I will run the main function. If
-I am importing this script into another script then I will just import all of
-my functions """
+
 
 if __name__ == '__main__':
     main()
