@@ -47,7 +47,7 @@ def read_bed(bname):
 
                 bdict[chrom]['start'] = start
                 bdict[chrom]['end'] = end
-                bdict[chrom]['region_length'] = end - start + 1
+                bdict[chrom]['region_length'] = end - start 
                 bdict[chrom]['depth'] = 0
                 bdict[chrom]['reads_in_region'] = 0
                 bdict[chrom]['apn'] = 0
@@ -88,8 +88,8 @@ def read_mpileup(mname,bdict):
             mpos = int(row[1])
             mdepth = int(row[3])
             if bdict.has_key(mchrom):
-                bdict[chrom]['counts'][mpos-1] = mdepth
-                bdict[chrom]['depth'] += mdepth
+                bdict[mchrom]['counts'][mpos-1] = mdepth
+                bdict[mchrom]['depth'] += mdepth
 
 
 # Coverage Functions
@@ -102,19 +102,20 @@ def calc_coverage(bdict,num_mapped_reads,read_length):
         depth = bdict[key]['depth']
         counts = bdict[key]['counts']
         region_length = bdict[key]['region_length']
-        reads_in_region = bdict[key]['reads_in_region']
+        reads_in_region = float(depth) / float(read_length) # Estimate the number of reads in region based on depth/read_length.
         if not depth == 0:
-            bdict[key]['reads_in_region'] = float(depth) / float(read_length) # Estimate the number of reads in region based on depth/read_length.
+            bdict[key]['reads_in_region'] = reads_in_region 
             bdict[key]['apn'] = float(depth) / float(region_length) # Calculate average per nucleotide coverage APN (depth in region / length of region).
             bdict[key]['rpkm'] = (1000000000.0 * reads_in_region) / (num_mapped_reads * region_length) # Calculate reads per kilobase per million mapped reads RPKM from Moretzavi et al. 
+
             if depth != sum(counts):
                 logging.error("There was a discrepancy between the depth and the count. Must be a bug!")
 
             mymean = np.mean(counts)
             mystd = np.std(counts)
-            bdict[chrom]['mean'] = mymean
-            bdict[chrom]['std'] = mystd
-            bdict[chrom]['cv'] = mystd / mymean
+            bdict[key]['mean'] = mymean
+            bdict[key]['std'] = mystd
+            bdict[key]['cv'] = mystd / mymean
 
 # Output Functions
 def writeOutput(oname,bdict,num_mapped_reads,read_length):
@@ -122,9 +123,9 @@ def writeOutput(oname,bdict,num_mapped_reads,read_length):
         well with SAS downstream. So I opted for the brute force method. """
 
     header = ['fusion_id','mapped_reads','read_length','region_length','region_depth','reads_in_region','apn','rpkm','mean','std','cv']
-    with open(args.out, 'wb') as OUT:
+    with open(oname, 'wb') as OUT:
         OUT.write(','.join(header) + '\n')
-        for key in fdict:
+        for key in bdict:
             OUT.write(','.join(str(x) for x in [key,num_mapped_reads,read_length,bdict[key]['region_length'],bdict[key]['depth'],bdict[key]['reads_in_region'],bdict[key]['apn'],bdict[key]['rpkm'],bdict[key]['mean'],bdict[key]['std'],bdict[key]['cv']]) + '\n')
 
 def main():
