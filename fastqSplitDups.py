@@ -25,8 +25,8 @@ def getName(odir, fname):
     name = os.path.splitext(bname)[0]
     uname = os.path.join(odir, name + '_uniq.fq')
     dname = os.path.join(odir, name + '_duplicate.fq')
-    upuniq = os.path.join(odir, 'unpaired_uniq.fq')
-    updup = os.path.join(odir, 'unpaired_duplicate.fq')
+    upuniq = os.path.join(odir, name + 'unpaired_uniq.fq')
+    updup = os.path.join(odir, name + 'unpaired_duplicate.fq')
     return(uname, dname, upuniq, updup)
 
 def readFq(fname,hdict):
