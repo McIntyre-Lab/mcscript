@@ -8,13 +8,12 @@ from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
 def getOptions():
     """ Function to pull in arguments """
-    parser = argparse.ArgumentParser(description="Converts a FASTQ file into a FASTA file.")
-    parser.add_argument("-r1", dest="r1", action='store', required=True, help="Name of read 1 or single end FASTQ file [Required]")
-    parser.add_argument("-r2", dest="r2", action='store', required=False, help="Name of read 2 FASTQ file. If single end leave blank.")
+    parser = argparse.ArgumentParser(description="Takes a single-end (SE) or paired-end (PE) file and splits out unique and duplicate reads.")
+    parser.add_argument("-r1", dest="r1", action='store', required=True, help="Name of read 1 or SE FASTQ file [Required]")
+    parser.add_argument("-r2", dest="r2", action='store', required=False, help="Name of read 2 FASTQ file. If SE leave blank.")
     parser.add_argument("--outdir", dest="odir", action='store', required=True, help="Directory to store output files [Required]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
     args = parser.parse_args()
-    #args = parser.parse_args(['-r1', 't1.fq', '-r2', 't2.fq',  '--outdir', '/home/jfear/tmp/'])
     return(args)
 
 def setLogger(fname,loglevel):
