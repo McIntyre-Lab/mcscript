@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 import os
+import sys
 import argparse
 import logging
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 def getOptions():
     """ Function to pull in arguments """
@@ -27,9 +31,9 @@ def incZ(x):
     zarray[one,two,three] += 1
 
 
-def plotFlow(zarray,pname):
+def plotFlow(zarray, pp, maxTileNum, seq):
     column_labels = list('123')
-    row_labels = list('12345678')
+    row_labels = list(range(1,maxTileNum+1))
     fig, (ax1, ax2) = plt.subplots(1,2,sharey=True)
     heatmap1 = ax1.pcolor(zarray[0], cmap=plt.cm.Blues)
     heatmap2 = ax2.pcolor(zarray[1], cmap=plt.cm.Blues)
@@ -42,8 +46,6 @@ def plotFlow(zarray,pname):
 
     # Change axis labels to look better
     ax1.invert_yaxis()
-    ax1.xaxis.tick_top()
-    ax2.xaxis.tick_top()
 
     ax1.set_xticklabels(column_labels, minor=False)
     ax1.set_yticklabels(row_labels, minor=False)
@@ -56,9 +58,8 @@ def plotFlow(zarray,pname):
 
     # Add gradient bar to figure
     fig.colorbar(heatmap1)
-    plt.xlabel("Size of Homopolymer Repeat", fontsize=18)
-    plt.ylabel("Number of Reads", fontsize=18)
-    plt.savefig(pname)
+    plt.suptitle(seq)
+    pp.savefig()
 
 def main():
     """ MAIN Function to execute everything """
@@ -69,6 +70,11 @@ def main():
     else:
         setLogger(os.devnull,logging.INFO)
 
+    fname = os.path.basename(args.input)
+    myname = os.path.splitext(fname)[0]
+    pname = os.path.join(args.out, myname + '.pdf')
+    pp = PdfPages(pname)
+
     logging.info("Importing coordinate table.")
     df = pd.read_csv(args.input)
     logging.info("Finished importing coordinate table.")
@@ -77,12 +83,16 @@ def main():
     counts = pd.value_counts(df['sequence'])
     logging.info("Finished summarizing sequence counts.")
 
-    for seq in counts[:N]:
+    for i in xrange(int(args.num)):
+        seq = counts.index[i]
         subset = df[df['sequence'] == seq]
+        maxTileNum = max(subset['tileNum'])
         global zarray
-        zarray = np.zeros((2,8,3))
+        zarray = np.zeros((2,maxTileNum,3))
         subset.apply(incZ, axis=1)
+        plotFlow(zarray, pp, maxTileNum, seq)
 
+    pp.close()
 
 
 if __name__=='__main__':
