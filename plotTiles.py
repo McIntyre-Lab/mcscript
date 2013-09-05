@@ -17,21 +17,51 @@ def getOptions():
     parser.add_argument("-o", "--outdir", dest="out", action='store', required=True, help="Directory to output PNGs [Required]")
     parser.add_argument("-N",  dest="num", action='store', default=10, required=False, help="Number of sequences to plot [Default 10]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    args = parser.parse_args()
+    #args = parser.parse_args()
+    args = parser.parse_args(['-i', 'r101.csv', '-o', '/home/jfear/tmp/profile/'])
     return(args)
 
 def setLogger(fname,loglevel):
     """ Function to handle error logging """
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def incZ(x):
+def incZGA2(x):
+    if x <= 60:
+        zarray[x-1,0] +=1
+    else:
+        zarray[120-x,1] +=1
+
+def incZHI(x):
     one = x['plane'] - 1
     two = x['tileNum'] - 1
     three = x['swath'] - 1
     zarray[one,two,three] += 1
 
+def plotFlowGA2(zarray, pp,  seq):
+    column_labels = list('12')
+    row_labels = list(range(1,60))
+    fig, ax1 = plt.subplots()
+    heatmap1 = ax1.pcolor(zarray, cmap=plt.cm.Blues)
 
-def plotFlow(zarray, pp, maxTileNum, seq):
+    # put the major ticks at the middle of each cell
+    ax1.set_xticks(np.arange(zarray.shape[1])+0.5, minor=False)
+    ax1.set_yticks(np.arange(zarray.shape[0])+0.5, minor=False)
+
+    # Change axis labels to look better
+    ax1.invert_yaxis()
+
+    ax1.set_xticklabels(column_labels, minor=False)
+    ax1.set_yticklabels(row_labels, minor=False)
+
+    # add titles
+    ax1.set_title("top")
+
+    # Add gradient bar to figure
+    fig.colorbar(heatmap1)
+    plt.suptitle(seq)
+    pp.savefig()
+
+def plotFlowHI(zarray, pp, maxTileNum, seq):
     column_labels = list('123')
     row_labels = list(range(1,maxTileNum+1))
     fig, (ax1, ax2) = plt.subplots(1,2,sharey=True)
@@ -86,11 +116,28 @@ def main():
     for i in xrange(int(args.num)):
         seq = counts.index[i]
         subset = df[df['sequence'] == seq]
-        maxTileNum = max(subset['tileNum'])
+        maxTileNum = max(subset['tile'])
         global zarray
-        zarray = np.zeros((2,maxTileNum,3))
-        subset.apply(incZ, axis=1)
-        plotFlow(zarray, pp, maxTileNum, seq)
+
+        if maxTileNum <= 120:
+            # This is a GAIIx lane
+            zarray = np.zeros((60,2))
+            subset.apply(incZGA2, axis=1)
+            plotFlowGA2(zarray, pp, maxTileNum, seq)
+        else: # This is a Hiseq lane
+            # Split hiseq tile informaion into parts.
+            tileList = subset['tile'].values
+            subset['plane'] = np.array([int(str(x)[0]) for x in tileList])
+            subset['swath'] = np.array([int(str(x)[1]) for x in tileList])
+            subset['tileNum'] = np.array([int(str(x)[-2:]) for x in tileList])
+
+            # Determine if there are 8 rows or 16 rows
+            rowNum = subset.tileNum.max()
+
+            # Build storage array and plot heatmap
+            zarray = np.zeros((2,rowNum,3))
+            subset.apply(incZHI, axis=1)
+            plotFlowHI(zarray, pp, maxTileNum, seq)
 
     pp.close()
 

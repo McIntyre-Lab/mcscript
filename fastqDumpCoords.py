@@ -32,10 +32,7 @@ def headerSplit(header):
             read = suphead[-1]
         else:
             read = 1
-    plane = tile[0]
-    swath = tile[1]
-    tileNum = tile[2:]
-    return([machine, lane, plane, swath, tileNum, xcoord, ycoord, read])
+    return([machine, lane, tile, xcoord, ycoord, read])
 
 def main():
     """ MAIN Function to execute everything """
@@ -48,7 +45,7 @@ def main():
 
     with open(args.input, 'r') as FQ:
         with open(args.out, 'w') as OUT:
-            OUT.write(','.join(str(x) for x in ['machine', 'lane', 'plane', 'swath', 'tileNum', 'x-coord', 'y-coord', 'readNum', 'sequence']) + "\n")
+            OUT.write(','.join(str(x) for x in ['machine', 'lane', 'tile', 'x-coord', 'y-coord', 'readNum', 'sequence']) + "\n")
             for (header, sequence, quality) in FastqGeneralIterator(FQ):
                 headerInfo = headerSplit(header)
                 OUT.write(','.join(str(x) for x in headerInfo) + ',' + sequence + "\n")
