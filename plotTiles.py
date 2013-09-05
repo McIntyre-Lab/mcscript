@@ -17,8 +17,7 @@ def getOptions():
     parser.add_argument("-o", "--outdir", dest="out", action='store', required=True, help="Directory to output PNGs [Required]")
     parser.add_argument("-N",  dest="num", action='store', default=10, required=False, help="Number of sequences to plot [Default 10]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    #args = parser.parse_args()
-    args = parser.parse_args(['-i', 'large.csv', '-o', '/home/jfear/tmp/profile'])
+    args = parser.parse_args()
     return(args)
 
 def setLogger(fname,loglevel):
