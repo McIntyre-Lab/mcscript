@@ -17,7 +17,8 @@ def getOptions():
     parser.add_argument("-o", "--outdir", dest="out", action='store', required=True, help="Directory to output PNGs [Required]")
     parser.add_argument("-N",  dest="num", action='store', default=10, required=False, help="Number of sequences to plot [Default 10]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    args = parser.parse_args()
+    #args = parser.parse_args()
+    args = parser.parse_args(['-i', 'large.csv', '-o', '/home/jfear/tmp/profile'])
     return(args)
 
 def setLogger(fname,loglevel):
@@ -25,10 +26,10 @@ def setLogger(fname,loglevel):
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def incZGA2(x):
-    if x <= 60:
-        zarray[x-1,0] +=1
+    if x['tile'] <= 60:
+        zarray[x['tile']-1,0] +=1
     else:
-        zarray[120-x,1] +=1
+        zarray[120-x['tile'],1] +=1
 
 def incZHI(x):
     one = x['plane'] - 1
@@ -36,9 +37,9 @@ def incZHI(x):
     three = x['swath'] - 1
     zarray[one,two,three] += 1
 
-def plotFlowGA2(zarray, pp,  seq):
+def plotFlowGA2(zarray, pp, seq):
     column_labels = list('12')
-    row_labels = list(range(1,60))
+    row_labels = list(range(1,60+1))
     fig, ax1 = plt.subplots()
     heatmap1 = ax1.pcolor(zarray, cmap=plt.cm.Blues)
 
@@ -48,6 +49,7 @@ def plotFlowGA2(zarray, pp,  seq):
 
     # Change axis labels to look better
     ax1.invert_yaxis()
+    ax1.tick_params(axis=1, which='major', labelsize=10)
 
     ax1.set_xticklabels(column_labels, minor=False)
     ax1.set_yticklabels(row_labels, minor=False)
@@ -60,9 +62,9 @@ def plotFlowGA2(zarray, pp,  seq):
     plt.suptitle(seq)
     pp.savefig()
 
-def plotFlowHI(zarray, pp, maxTileNum, seq):
+def plotFlowHI(zarray, pp, rowNum, seq):
     column_labels = list('123')
-    row_labels = list(range(1,maxTileNum+1))
+    row_labels = list(range(1,rowNum+1))
     fig, (ax1, ax2) = plt.subplots(1,2,sharey=True)
     heatmap1 = ax1.pcolor(zarray[0], cmap=plt.cm.Blues)
     heatmap2 = ax2.pcolor(zarray[1], cmap=plt.cm.Blues)
@@ -122,7 +124,7 @@ def main():
             # This is a GAIIx lane
             zarray = np.zeros((60,2))
             subset.apply(incZGA2, axis=1)
-            plotFlowGA2(zarray, pp, maxTileNum, seq)
+            plotFlowGA2(zarray, pp, seq)
         else: # This is a Hiseq lane
             # Split hiseq tile informaion into parts.
             tileList = subset['tile'].values
@@ -136,7 +138,7 @@ def main():
             # Build storage array and plot heatmap
             zarray = np.zeros((2,rowNum,3))
             subset.apply(incZHI, axis=1)
-            plotFlowHI(zarray, pp, maxTileNum, seq)
+            plotFlowHI(zarray, pp, rowNum, seq)
 
     pp.close()
 
