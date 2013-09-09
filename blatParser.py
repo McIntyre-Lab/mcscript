@@ -19,6 +19,9 @@ def setLogger(fname,loglevel):
     logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def pslParse(bname):
+    """ Skip the header lines of the PSL file. Then parse each line, put each
+    read id into a list. Return a unique list of read ids that had a blat match.
+    """
     with open(bname,'r') as PSL:
         for row in PSL:
             # skip all of the header lines
@@ -32,10 +35,11 @@ def pslParse(bname):
     return(idSet)
 
 def fastqParse(fname):
+    """ Simple fastq parser that uses Bio.SeqIO.index_db() to index a file to
+    allow random access to reads. Returns a database object. """
     indexName = os.path.splitext(fname)[0] + '.idx'
     dbObj = SeqIO.index_db(indexName, fname, 'fastq')
     return(dbObj)
-
 
 def main():
     """ MAIN Function to execute everything """
@@ -46,22 +50,29 @@ def main():
     else:
         setLogger(os.devnull,logging.INFO)
 
-    bname = '/home/jfear/tmp/psl/r1.psl'
-    fname = '/home/jfear/tmp/fq/r1.fq'
-    oname = '/home/jfear/tmp/bob.csv'
+    # Create output file names
+    curname = os.path.splitext(os.path.basename(args.bname))[0]
+    otable = os.path.join(args.out,curname + '_table.csv')
+    osummary = os.path.join(args.out,curname + '_summary.csv')
 
-    pslSet = pslParse(bname)
-    fqDB = fastqParse(fname)
+    # Parse PSL and FQ files
+    pslSet = pslParse(args.bname)
+    fqDB = fastqParse(args.fname)
 
-    with open(oname,'w') as OUT:
+    with open(otable,'w') as OUT:
+        OUT.write("read_id,flag_adapter\n")
         for read in fqDB.itervalues():
             if read.id in pslSet:
                 OUT.write(read.id +',1\n')
             else:
                 OUT.write(read.id +',0\n')
-            
 
-
+    with open(osummary, 'w') as OUT:
+        OUT.write("file,total_num_reads,num_reads_w_adapter,per_adapter\n")
+        total_num_reads = len(fqDB)
+        num_reads_w_adapter = len(pslSet)
+        per_adapter = float(num_reads_w_adapter) / float(total_num_reads) * 100
+        OUT.write(','.join([str(x) for x in [curname,total_num_reads,num_reads_w_adapter,per_adapter]]) + "\n")
 
 
 if __name__=='__main__':
