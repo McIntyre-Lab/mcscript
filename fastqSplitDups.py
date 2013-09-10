@@ -25,15 +25,21 @@ def getName(odir, fname):
     name = os.path.splitext(bname)[0]
     uname = os.path.join(odir, name + '_uniq.fq')
     dname = os.path.join(odir, name + '_duplicate.fq')
-    upuniq = os.path.join(odir, name + 'unpaired_uniq.fq')
-    updup = os.path.join(odir, name + 'unpaired_duplicate.fq')
+    upuniq = os.path.join(odir, name + '_unpaired_uniq.fq')
+    updup = os.path.join(odir, name + '_unpaired_duplicate.fq')
     return(uname, dname, upuniq, updup)
 
 def readFq(fname,hdict):
     with open(fname, 'r') as FQ:
         for header, seq, qual in FastqGeneralIterator(FQ):
-            header = re.sub('/[1-2]','',header)
-            hdict[header].append((seq,qual))
+            if header.count(' '):
+                # Header was created using CASAVA 1.8+ 
+                (mhead, suphead) = header.split(' ')
+                hdict[mhead].append((seq,qual))
+            else:
+                # Header was created using older versions of CASAVA
+                header = re.sub('/[1-2]','',header)
+                hdict[header].append((seq,qual))
 
 def idDups(hdict):
     sdict = collections.defaultdict(list)
