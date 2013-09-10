@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 import logging
 import argparse 
 from Bio.Blast import NCBIXML
@@ -35,7 +36,7 @@ def main():
                 query_name = record.query
                 query_length = record.query_length
                 for aln in record.alignments:
-                    hit_def = aln.hit_def
+                    hit_def = re.sub(",", "", aln.hit_def)
                     hit_id = aln.hit_id
                     for hsp in aln.hsps:
                         query_seq = hsp.query
