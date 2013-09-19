@@ -11,7 +11,9 @@ def getOptions():
     parser = argparse.ArgumentParser(description="Takes a single-end (SE) or paired-end (PE) file and splits out unique and duplicate reads.")
     parser.add_argument("-r1", dest="r1", action='store', required=True, help="Name of read 1 or SE FASTQ file [Required]")
     parser.add_argument("-r2", dest="r2", action='store', required=False, help="Name of read 2 FASTQ file. If SE leave blank.")
-    parser.add_argument("--outdir", dest="odir", action='store', required=True, help="Directory to store output files [Required]")
+    parser.add_argument("--outdir", dest="odir", action='store', required=True, help="Directory to store FASTQ output files [Required]")
+    parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Output file for counts in csv format [Required]")
+    parser.add_argument("-t", "--table", dest="tname", action='store', required=True, help="Output table of intermediate size information [Required]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
     args = parser.parse_args()
     return(args)
@@ -57,9 +59,13 @@ def buildOutSE(hdict,vlist):
         myout += '\n'.join(str(x) for x in ['@' + value, hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
     return(myout)
 
-def writeOutputSE(hdict,sdict,uname,dname):
+def writeOutputSE(hdict,sdict,uname,dname,oname,tname):
     UNIQ = open(uname[0], 'w')
     DUPS = open(dname[0], 'w')
+
+    total_num = 0
+    num_uniq_reads = 0
+    uniq_num = 0
 
     for value in sdict.values():
         if len(value) == 1:
@@ -68,6 +74,11 @@ def writeOutputSE(hdict,sdict,uname,dname):
         else:
             myout = buildOutSE(hdict,value)
             DUPS.write(myout)
+            total_num += len(value)
+            uniq_num += 1
+
+    percent_uniq_seq = float(uniq_num) / float(total_num) * 100
+    percent_uniq_reads = float(num_uniq_reads) / float(total_num) * 100
 
 def buildOutPE(hdict,vlist):
     myout1 = ''
@@ -82,7 +93,7 @@ def buildOutPE(hdict,vlist):
 
     return(myout1, myout2, upout)
 
-def writeOutputPE(hdict,sdict,uname,dname,upuniq,updup):
+def writeOutputPE(hdict,sdict,uname,dname,upuniq,updup,oname,tname):
     UNIQ1 = open(uname[0], 'w')
     DUPS1 = open(dname[0], 'w')
     UNIQ2 = open(uname[1], 'w')
@@ -90,17 +101,35 @@ def writeOutputPE(hdict,sdict,uname,dname,upuniq,updup):
     UPU = open(upuniq, 'w')
     UPD = open(updup, 'w')
 
+    total_num = 0
+    num_uniq_reads = 0
+    uniq_num = 0
+
     for value in sdict.values():
         if len(value) == 1:
             myout1, myout2, upout = buildOutPE(hdict,value)
             UNIQ1.write(myout1)
             UNIQ2.write(myout2)
             UPU.write(upout)
+            num_uniq_reads += 1
+            total_num += 1
+            uniq_num += 1
         else:
             myout1, myout2, upout = buildOutPE(hdict,value)
             DUPS1.write(myout1)
             DUPS2.write(myout2)
             UPD.write(upout)
+            total_num += len(value)
+            uniq_num += 1
+
+    
+    percent_uniq_seq = float(uniq_num) / float(total_num) * 100
+    percent_uniq_reads = float(num_uniq_reads) / float(total_num) * 100
+    with open(oname, 'w') as ON:
+        ON.write("file_name,total_reads,num_unique_seq,per_uniq_seq,num_unique_reads,per_uniq_reads\n")
+        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads]
+        ON.write(','.join([str(x) for x in myout])+"\n")
+    #TODO write output for counts table
 
 def main():
     """ MAIN Function to execute everything """
@@ -138,12 +167,12 @@ def main():
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
         sdict = idDups(hdict)
-        writeOutputPE(hdict,sdict,uname,dname,upuniq,updup)
+        writeOutputPE(hdict,sdict,uname,dname,upuniq,updup,args.oname,args.tname)
     else:
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
         sdict = idDups(hdict)
-        writeOutputSE(hdict,sdict,uname,dname)
+        writeOutputSE(hdict,sdict,uname,dname,args.oname,args.tname)
 
 
 if __name__=='__main__':
