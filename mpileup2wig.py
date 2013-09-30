@@ -11,8 +11,8 @@ def getOptions():
     parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Output WIG file [Required]")
     parser.add_argument("-b", "--bed", dest="bed", action='store', required=False, help="A 4+ column BED file for coordinate conversion or splitting junctions. [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    #args = parser.parse_args()
-    args = parser.parse_args(['-i','/home/jfear/tmp/mpileup/small_junc.mpileup', '-o', '/home/jfear/tmp/mpileup/small_junc.wig','-b', '/home/jfear/tmp/mpileup/fb551_canonical_200bpJunctions.bed'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['-i','/home/jfear/tmp/mpileup/small_junc.mpileup', '-o', '/home/jfear/tmp/mpileup/small_junc.wig','-b', '/home/jfear/tmp/mpileup/fb551_canonical_200bpJunctions.bed'])
     return(args)
 
 def setLogger(fname,loglevel):
