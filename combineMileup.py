@@ -11,8 +11,8 @@ def getOptions():
     parser.add_argument("-i", "--input", dest="fname", nargs='+',action='store', required=True, help="List of MPILEUP files to combine [Required]")
     parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Output MPILEUP file [Required]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    #args = parser.parse_args()
-    args = parser.parse_args(['-i','/home/jfear/tmp/mpileup/r101_M1.mpileup', '/home/jfear/tmp/mpileup/r101_M2.mpileup', '/home/jfear/tmp/mpileup/r101_M3.mpileup', '-o', '/home/jfear/tmp/mpileup/r101_combine.mpileup'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['-i','/home/jfear/tmp/mpileup/r101_M1.mpileup', '/home/jfear/tmp/mpileup/r101_M2.mpileup', '/home/jfear/tmp/mpileup/r101_M3.mpileup', '-o', '/home/jfear/tmp/mpileup/r101_combine.mpileup'])
     return(args)
 
 def setLogger(fname,loglevel):
