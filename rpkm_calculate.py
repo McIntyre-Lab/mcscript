@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
-import sys, csv, argparse, logging
+import argparse
+import logging
+import csv
+import collections
+import numpy as np
 from argparse import RawDescriptionHelpFormatter
-from Bio import SeqIO
-csv.field_size_limit(100000000)
 
 def getOptions():
     """ Function to pull in arguments """
@@ -29,6 +31,7 @@ def getOptions():
     parser.add_argument("-m", "--mpileup", dest="mname", action='store', required=True, help="mpileup file [Required]",metavar="MPILEUP_FILE")
     parser.add_argument("-s", "--sam", dest="sname", action='store', required=True, help="sam alignment file [Required]", metavar="SAM_FILE")
     parser.add_argument("-b", "--bed", dest="bname", action='store', required=True, help="bed file (3 or 4 columns) [Required]", metavar="BED_FILE")
+    parser.add_argument("-c", "--cv", dest="cv", action='store_true', required=False, help="A flag to indicate if you want output for the coefficient of variation [OPTIONAL]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File", metavar="LOG_FILE") 
     parser.add_argument("-o", "--out", dest="out", action='store', required=True, help="Out File", metavar="OUT_FILE")
     args = parser.parse_args()
@@ -36,175 +39,134 @@ def getOptions():
 
 def setLogger(fname,loglevel):
     """ Function to handle error logging """
-    logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# BED Functions
-def init_fdict(label,start,end,fdict):
-    """ Initialize fdict so that everything is printed to output even if there
-        is no coverage information (i.e, print lines with all 0's) """
-
-    fdict[label] = {}
-    fdict[label]['depth'] = 0
-    fdict[label]['region_length'] = end - start + 1
-    fdict[label]['reads_in_region'] = 0
-    fdict[label]['apn'] = 0
-    fdict[label]['rpkm'] = 0
-
-def three_col_bed(bdict,chrom,start,end,fdict):
-    """ Read in information from a 3-column BED file and store it in bdict """
-
-    if not fdict.has_key(chrom):        # As you read in BED information go ahead and initialize fdict with all of its 0 values
-        init_fdict(chrom,start,end,fdict)
-
-    if not bdict.has_key(chrom):        # Build bdict from BED file
-        bdict[chrom] = {}
-    bdict[chrom]['start'] = start
-    bdict[chrom]['end'] = end
-
-def four_col_bed(bdict,chrom,start,end,label,fdict):
-    """ Read in information from a 4-column BED file and store in bdict. Note:
-        for the 4-column setting I am expanding bdict to the coordinate level.
-        In other words bdict[chrom][postion]... This was the quickest way to
-        test if a mpileup position is in region, unfortunately it requires a
-        lot of RAM ~10-12GB for fly fusions """
-
-    if not fdict.has_key(label): # As you read in BED information go ahead and initialize fdict with all of its 0 values
-        init_fdict(label,start,end,fdict)
-
-    if not bdict.has_key(chrom):           # Build bdict from BED file
-        bdict[chrom] = {}
-    for pos in xrange(start,end+1):
-        if not bdict[chrom].has_key(pos):
-            bdict[chrom][pos] = {}
-        bdict[chrom][pos]['start'] = start
-        bdict[chrom][pos]['end'] = end
-        bdict[chrom][pos]['label'] = label
-
-def read_bed(args,fdict):
-    """ Read BED file and create a Dictionary containing all information """
-    if args.log:
-        logging.info("Reading the BED File '%s'." % args.bname)
-
-    bdict = {}
-    with open(args.bname,'r') as BED:
-        reader = csv.reader(BED,delimiter='\t')
-        for row in reader:
-            chrom = row[0]
-            start = int(row[1])
-            end = int(row[2])
-            if len(row) == 4:                    # If BED file has 4 columns
-                label = row[3]
-                four_col_bed(bdict,chrom,start,end,label,fdict)
-                flag_4 = 1
-            elif len(row) == 3:
-                three_col_bed(bdict,chrom,start,end,fdict)
-                flag_4 = 0
-            else:
-                logging.error("I can only handle 3 or 4 column bed files. See Help for descriptions")
-                exit(-1)
-
-    return(bdict,flag_4)
+    logging.basicConfig(filename=fname, filemode='w', level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # SAM Functions
 def read_sam(args):
     """ Read SAM file to get read length and number of mapped reads. Note: if
         you have allowed ambiguous mapping then reads are counted multiple times.  """
     logging.info("Reading the SAM File '%s'." % args.sname)
-
     num_mapped_reads = 0
     read_length = 0
     with open(args.sname,'r') as SAM:
         for row in SAM:
             if not row.startswith('@'):
                 record = row.strip().split('\t')
-                if record[1] != 4:
+                if record[1] != 4:          # only look at aligned reads, a 4 in column 2 of a single end aligned sam file indicates an unaligned read (see sam format)
                     num_mapped_reads += 1
-                read_length = max(read_length,len(record[9]))
-
+                read_length = max(read_length,len(record[9]))    # find the maximum read length
     return(num_mapped_reads,read_length)
 
+# BED Functions
+def read_bed(args):
+    """ Read BED file and create a dictionary containing all information """
+    logging.info("Reading the BED File '%s'." % args.bname)
+    bdict = collections.defaultdict(dict)
+    with open(args.bname,'r') as BED:
+        reader = csv.reader(BED,delimiter='\t')
+        for row in reader:
+            if len(row) == 4:                    # If BED file has 4 columns
+                chrom = row[0]
+                start = int(row[1])
+                end = int(row[2])
+                length = end - start
+                fusion = row[3]
+            elif len(row) == 3:                  # If BED file has 3 columns
+                chrom = row[0]
+                start = int(row[1])
+                end = int(row[2])
+                length = end
+                fusion = row[0]
+            else:
+                logging.error("I can only handle 3 or 4 column bed files. See Help for descriptions")
+                exit(-1)
+            bdict[fusion]['chrom'] = chrom
+            bdict[fusion]['start'] = start
+            bdict[fusion]['end'] = end
+            bdict[fusion]['region_length'] = length + 1  # convert back to 1 based scale
+            bdict[fusion]['count'] = np.zeros(length)    # create a holding vector of 0's as long as the region, I will replace the 0's with counts from the mpileup
+    cdict = collections.defaultdict(dict)
+    for fusion in bdict:
+        chrom = bdict[fusion]['chrom']
+        start = bdict[fusion]['start']
+        end = bdict[fusion]['end']
+        cdict[chrom].update(dict((x,fusion) for x in xrange(start,end+1))) # create a look up dictionary by chromosome. This will make parsing the mpileup faster.
+    return(bdict,cdict)
+
 # MPILEUP Functions
-def flag4_mpileup(fdict,bdict,chrom,pos,depth):
-    """ Sum depth over parts of a genomic region """
-
-    if bdict[chrom].has_key(pos):
-        start = bdict[chrom][pos]['start']
-        end = bdict[chrom][pos]['end']
-        label = bdict[chrom][pos]['label']
-        if fdict.has_key(label):
-            fdict[label]['depth'] += depth
-        else:
-            logging.error("fdict did not have a key found in bdict")
-            exit(-1)
-
-
-def noflag4_mpileup(fdict,bdict,chrom,depth):
-    """ Sum depth over entire genomic region """
-
-    if fdict.has_key(chrom):
-        fdict[chrom]['depth'] += depth
-    else:
-        logging.error("fdict did not have a key found in bdict")
-        exit(-1)
-
-def read_mpileup(args,flag_4,bdict,fdict):
-    """ Read mpileup and store depth and length into a new Dictionary """
+def read_mpileup(args,bdict,cdict):
+    """ Read mpileup and store depth and length into dictionary """
     logging.info("Reading the Mpileup File '%s'." % args.mname)
-
     with open(args.mname, 'r') as MPILEUP:
         reader = csv.reader(MPILEUP, delimiter='\t',quoting=csv.QUOTE_NONE)
         for row in reader:
             mchrom = row[0]
-            mpos = int(row[1])
+            mpos = int(row[1]) - 1  # mpileups are 1-based
             mdepth = int(row[3])
-            if bdict.has_key(mchrom):
-                if flag_4:
-                    flag4_mpileup(fdict,bdict,mchrom,mpos,mdepth)
-                else:
-                    noflag4_mpileup(fdict,bdict,mchrom,mdepth)
+            try:
+                fusion = cdict[mchrom][mpos]
+                loc = mpos - bdict[fusion]['start']
+                bdict[fusion]['count'][loc] = mdepth
+            except:
+                continue
 
 # Coverage Functions
-def calc_coverage(fdict,num_mapped_reads,read_length):
-    """ Calculate different coverage metric:
-        Estimate number of reads in region.
-        Average per nucleotide coverage (APN).
-        Reads per kilobase per million mapped reads (RPKM). """
+def calc_coverage(bdict,num_mapped_reads,read_length):
+    """ Calculate different coverage metrics: Estimate number of reads in
+    region, Average per nucleotide coverage (APN), Reads per kilobase per
+    million mapped reads (RPKM), average coverage across region (mean),
+    standard deviation of coverage in region (std), and coefficient of
+    variation (cv). """
     logging.info("Calculating Coverage Counts")
-
-    for key in fdict:
-        if not fdict[key]['depth'] == 0:
-            fdict[key]['reads_in_region'] = (fdict[key]['depth']) / (read_length*1.0)                                              # Estimate the number of reads in region based on depth/read_length. Multiplying by 1.0 to tell python to use decimals.
-            fdict[key]['apn'] = (fdict[key]['depth']) / (fdict[key]['region_length'] * 1.0)                                        # Calculate average per nucleotide coverage APN (depth in region / length of region). Multiplying by 1.0 to tell python to use decimals.
-            fdict[key]['rpkm'] = (1000000000.0 * fdict[key]['reads_in_region']) / (num_mapped_reads * fdict[key]['region_length']) # Calculate reads per kilobase per million mapped reads RPKM from Moretzavi et al. 
+    for fusion in bdict:
+        depth = np.sum(bdict[fusion]['count'])
+        bdict[fusion]['depth'] = int(depth)
+        bdict[fusion]['mean'] = np.mean(bdict[fusion]['count'])
+        bdict[fusion]['std'] = np.std(bdict[fusion]['count'])
+        if depth != 0:
+            bdict[fusion]['reads_in_region'] = depth / float(read_length)  # Estimate the number of reads in region based on depth/read_length. Multiplying by 1.0 to tell python to use decimals.
+            bdict[fusion]['apn'] = depth / float(bdict[fusion]['region_length'])  # Calculate average per nucleotide coverage APN (depth in region / length of region). Multiplying by 1.0 to tell python to use decimals.
+            bdict[fusion]['rpkm'] = (1000000000.0 * bdict[fusion]['reads_in_region']) / float(num_mapped_reads * bdict[fusion]['region_length']) # Calculate reads per kilobase per million mapped reads RPKM from Moretzavi et al. 
+            bdict[fusion]['cv'] = bdict[fusion]['std'] / bdict[fusion]['mean'] # Calculate the coefficient of variation
+        else:
+            # if there is no coverage set everything to 0
+            bdict[fusion]['reads_in_region'] = 0
+            bdict[fusion]['apn'] = 0
+            bdict[fusion]['rpkm'] = 0
+            bdict[fusion]['cv'] = 0
 
 # Output Functions
-
-def writeOutput(args,fdict,num_mapped_reads,read_length):
+def writeOutput(args,bdict,num_mapped_reads,read_length):
     """ I tried writing output using the CSV module, but this did not behave
         well with SAS downstream. So I opted for the brute force method. """
     logging.info("Writing Output")
 
-    header = ['fusion_id','mapped_reads','read_length','region_length','region_depth','reads_in_region','apn','rpkm']
-    with open(args.out, 'wb') as OUT:
-        OUT.write(','.join(header) + '\n')
-        for key in fdict:
-            OUT.write(','.join(str(x) for x in [key,num_mapped_reads,read_length,fdict[key]['region_length'],fdict[key]['depth'],fdict[key]['reads_in_region'],fdict[key]['apn'],fdict[key]['rpkm']]) + '\n')
+    if args.cv:
+        header = ['fusion_id','mapped_reads','read_length','region_length','region_depth','reads_in_region','apn','rpkm','mean','std','cv']
+        with open(args.out, 'wb') as OUT:
+            OUT.write(','.join(header) + '\n')
+            for key in bdict:
+                OUT.write(','.join(str(x) for x in [key,num_mapped_reads,read_length,bdict[key]['region_length'],bdict[key]['depth'],bdict[key]['reads_in_region'],bdict[key]['apn'],bdict[key]['rpkm'],bdict[key]['mean'],bdict[key]['std'],bdict[key]['cv']]) + '\n')
+    else:
+        header = ['fusion_id','mapped_reads','read_length','region_length','region_depth','reads_in_region','apn','rpkm']
+        with open(args.out, 'wb') as OUT:
+            OUT.write(','.join(header) + '\n')
+            for key in bdict:
+                OUT.write(','.join(str(x) for x in [key,num_mapped_reads,read_length,bdict[key]['region_length'],bdict[key]['depth'],bdict[key]['reads_in_region'],bdict[key]['apn'],bdict[key]['rpkm']]) + '\n')
+
 
 def main():
     """ MAIN Function to execute everything """
-
-    args = getOptions()                                  # Turn on Logging if option -g was given
-    if args.log:
+    args = getOptions()
+    if args.log:                                         # Turn on Logging if option -g was given
         setLogger(args.log,logging.INFO)
 
-    fdict = {}                                           # Initialize the dictionary that will hold all of my information for output
-    bdict, flag_4 = read_bed(args,fdict)                 # Read through BED file and create dictionary with BED information. Note: A 4 column BED will require a large amount of RAM ~10-12GB for FLY
-    read_mpileup(args,flag_4,bdict,fdict)                # Read Mpileup file and add depth to fdict
-    del bdict                                            # Remove bed information because I don't need it any more
-    num_mapped_reads, read_length = read_sam(args)       # Use SAM file to estimate the number of mapped reads and the max read length
-    calc_coverage(fdict,num_mapped_reads,read_length)    # Use all of this information to estimate the number of reads in genomic region and calculate coverage (APN,RPKM) for the genomic region
-    writeOutput(args,fdict,num_mapped_reads,read_length) # Write output to CSV file
-
+    num_mapped_reads, read_length = read_sam(args)       # Use SAM file to count the number of mapped reads and the max read length
+    bdict,cdict = read_bed(args)                               # Read through BED file and create dictionary to sort all information.
+    read_mpileup(args,bdict,cdict)                             # Read Mpileup file and populate the bdict with pileup information
+    calc_coverage(bdict,num_mapped_reads,read_length)    # Use information stored in bdict to calculate coverage (APN,RPKM) and other measures for the genomic region
+    writeOutput(args,bdict,num_mapped_reads,read_length) # Write output to CSV file
 
 if __name__=='__main__':
     main()
+    logging.info("Script Complete")
