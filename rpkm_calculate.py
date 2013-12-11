@@ -6,6 +6,7 @@ import csv
 import collections
 import numpy as np
 from argparse import RawDescriptionHelpFormatter
+csv.field_size_limit(1000000000)
 
 def getOptions():
     """ Function to pull in arguments """
