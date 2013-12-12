@@ -31,6 +31,7 @@ def main():
 
     with open(args.oname, 'w') as OUT:
         header = ['fusion_id','flag_self','flag_ambig','cnt_ambig','ambig_fusion_cat']
+        OUT.write(','.join(header) + "\n")
         with open(args.fname,'r') as IN:
             logging.info('Reading Blast File and Building Dictionary.')
             for row in IN:
@@ -46,7 +47,6 @@ def main():
         logging.info('Wirting Output.')
         for key in mydict:
             myout = [key,'0','0','0','NA']
-            OUT.write(','.join(myout) + "\n")
             if mydict[key]['self']:
                 myout[1] = '1'
                 try:
