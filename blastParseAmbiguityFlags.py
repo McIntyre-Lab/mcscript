@@ -10,8 +10,8 @@ def getOptions():
     parser.add_argument("-i", dest="fname", action='store', required=True, help="Input BLAST file in outfmt 6 [Required]")
     parser.add_argument("-o", dest="oname", action='store', required=True, help="Output file for counts in csv format [Required]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    #args = parser.parse_args()
-    args = parser.parse_args(['-i', '/home/jfear/tmp/blast/ambiguity_blast_fb551_non-redundant_fusions.tsv', '-o', '/home/jfear/tmp/blast/test.csv', '-g', '/home/jfear/tmp/blast/test.log'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['-i', '/home/jfear/tmp/blast/ambiguity_blast_fb551_non-redundant_fusions.tsv', '-o', '/home/jfear/tmp/blast/test.csv', '-g', '/home/jfear/tmp/blast/test.log'])
     return(args)
 
 def setLogger(fname,loglevel):
