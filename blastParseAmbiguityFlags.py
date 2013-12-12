@@ -46,6 +46,7 @@ def main():
         logging.info('Wirting Output.')
         for key in mydict:
             myout = [key,'0','0','0','NA']
+            OUT.write(','.join(myout) + "\n")
             if mydict[key]['self']:
                 myout[1] = '1'
                 try:
