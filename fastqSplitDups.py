@@ -17,21 +17,22 @@ def getOptions():
     parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Output file for counts in csv format [Required]")
     parser.add_argument("-t", "--table", dest="tname", action='store', required=True, help="Output table of intermediate size information [Required]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    args = parser.parse_args()
-    #args = parser.parse_args(['-r1', '/home/jfear/tmp/fq/r1.fq', '-r2', '/home/jfear/tmp/fq/r2.fq', '--outdir', '/home/jfear/tmp/files', '-o', '/home/jfear/tmp/counts.csv', '-t', '/home/jfear/tmp/cnts_table.tsv'])
+    #args = parser.parse_args()
+    args = parser.parse_args(['-r1', '/home/jfear/tmp/fq/r1.fq', '-r2', '/home/jfear/tmp/fq/r2.fq', '--outdir', '/home/jfear/tmp/files', '-o', '/home/jfear/tmp/files/counts.csv', '-t', '/home/jfear/tmp/files/cnts_table.tsv', '-g', '/home/jfear/tmp/files/test.log'])
     return(args)
 
 def setLogger(fname,loglevel):
     """ Function to handle error logging """
-    logging.basicConfig(filename=fname, level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=fname, level=loglevel, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
 def getName(odir, fname):
     """ This function creates unique and duplicate dataset names. """
     bname = os.path.basename(fname)
     name = os.path.splitext(bname)[0]
     uname = os.path.join(odir, name + '_uniq.fq')
-    dname = os.path.join(odir, name + '_duplicate.fq')
-    return(uname, dname)
+    duname = os.path.join(odir, name + '_duplicate.fq')
+    diname = os.path.join(odir, name + '_distinct.fq')
+    return(uname, duname, diname)
 
 def getNameUnpaired(odir, fname1, fname2):
     """ This function creates the unpaired dataset names. """
@@ -39,7 +40,8 @@ def getNameUnpaired(odir, fname1, fname2):
     name2 = os.path.splitext(os.path.basename(fname2))[0]
     upuniq = os.path.join(odir, name1 + '_' + name2 + '_unpaired_uniq.fq')
     updup = os.path.join(odir, name1 + '_' + name2 + '_unpaired_duplicate.fq')
-    return(upuniq, updup)
+    updist = os.path.join(odir, name1 + '_' + name2 + '_unpaired_distinct.fq')
+    return(upuniq, updup, updist)
 
 def readFq(fname,hdict):
     """ Function to read a FQ file, I used the FastqGeneralIterator for its
@@ -71,36 +73,58 @@ def buildOutSE(hdict,vlist):
         myout += '\n'.join(str(x) for x in ['@' + value, hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
     return(myout)
 
-def writeOutputSE(hdict,sdict,uname,dname,oname,tname):
+def buildDistinctOutSE(hdict,vlist):
+    myout = ''
+    for value in vlist:
+        myout += '\n'.join(str(x) for x in ['@' + value, hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
+        return(myout)
+
+def writeOutputSE(hdict,sdict,uname,duname,diname,oname,tname):
     UNIQ = open(uname[0], 'w')
-    DUPS = open(dname[0], 'w')
+    DUPS = open(duname[0], 'w')
+    DIST = open(diname[0], 'w')
 
     total_num = 0
     num_uniq_reads = 0
     uniq_num = 0
+    dup_num = 0
+    dist_num = 0
 
     for value in sdict.values():
         if len(value) == 1:
+            # Unique Reads Output
             myout = buildOutSE(hdict,value)
             UNIQ.write(myout)
             total_num += 1
             num_uniq_reads += 1
             uniq_num += 1
         else:
+            # Duplicated Reads Output
             myout = buildOutSE(hdict,value)
             DUPS.write(myout)
             total_num += len(value)
+            dup_num += len(value)
             uniq_num += 1
 
+        # Distinct Reads Output
+        myout = buildDistinctOutSE(hdict,value)
+        DIST.write(myout)
+        dist_num += 1
+
+    # Close Output Files
     UNIQ.close()
     DUPS.close()
+    DIST.close()
 
+    # Create Output Count Table. This is the same output as Alison's original duplicate count script.
     percent_uniq_seq = float(uniq_num) / float(total_num) * 100
     percent_uniq_reads = float(num_uniq_reads) / float(total_num) * 100
+    percent_dist_reads = float(dist_num) / float(total_num) * 100
+    percent_dup_reads = float(dup_num) / float(total_num) * 100
 
     with open(oname, 'w') as ON:
-        ON.write("file_name,total_reads,num_unique_seq,per_uniq_seq,num_unique_reads,per_uniq_reads\n")
-        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads]
+        ON.write("file_name,total_reads,num_unique_seq,per_unique_seq,num_unique_reads,per_unique_reads,num_distinct_reads,per_distinct_reads,num_duplicate_reads,per_duplicate_reads\n")
+        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads,dist_num,percent_dist_reads,dup_num,percent_dup_reads]
         ON.write(','.join([str(x) for x in myout])+"\n")
 
     counts = dict()
@@ -109,7 +133,7 @@ def writeOutputSE(hdict,sdict,uname,dname,oname,tname):
     with open(tname, 'w') as OT:
         sorted_counts = sorted(counts.iteritems(), key=operator.itemgetter(1), reverse=True)
         for item in sorted_counts:
-            OT.write(str(item[1]) + ' ' + str(item[0]).strip() + "\n")
+            OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
 
 def buildOutPE(hdict,vlist):
     myout1 = ''
@@ -124,47 +148,85 @@ def buildOutPE(hdict,vlist):
 
     return(myout1, myout2, upout)
 
-def writeOutputPE(hdict,sdict,uname,dname,upuniq,updup,oname,tname):
+def buildDistinctOutPE(hdict,vlist):
+    myout1 = ''
+    myout2 = ''
+    upout = ''
+    for value in vlist:
+        try:
+            myout2 += '\n'.join(str(x) for x in ['@' + value + '/2', hdict[value][1][0],'+', hdict[value][1][1]]) + '\n'
+            myout1 += '\n'.join(str(x) for x in ['@' + value + '/1', hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
+        except:
+            upout += '\n'.join(str(x) for x in ['@' + value , hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
+        return(myout1, myout2, upout)
+
+def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tname):
     UNIQ1 = open(uname[0], 'w')
-    DUPS1 = open(dname[0], 'w')
+    DUPS1 = open(duname[0], 'w')
+    DIST1 = open(diname[0], 'w')
     UNIQ2 = open(uname[1], 'w')
-    DUPS2 = open(dname[1], 'w')
-    UPU = open(upuniq, 'w')
-    UPD = open(updup, 'w')
+    DUPS2 = open(duname[1], 'w')
+    DIST2 = open(diname[1], 'w')
 
     total_num = 0
     num_uniq_reads = 0
     uniq_num = 0
+    dup_num = 0
+    dist_num = 0
 
     for value in sdict.values():
         if len(value) == 1:
+            # Unique Reads Output
             myout1, myout2, upout = buildOutPE(hdict,value)
             UNIQ1.write(myout1)
             UNIQ2.write(myout2)
-            UPU.write(upout)
+            if upout:
+                logging.warn("Some of your reads are missing their mate pair!")
+                with open(upuniq, 'a') as UPU:
+                    UPU.write(upout)
             num_uniq_reads += 1
             total_num += 1
             uniq_num += 1
         else:
+            # Duplicated Reads Output
             myout1, myout2, upout = buildOutPE(hdict,value)
             DUPS1.write(myout1)
             DUPS2.write(myout2)
-            UPD.write(upout)
+            if upout:
+                logging.warn("Some of your reads are missing their mate pair!")
+                with open(updup, 'a') as UPD:
+                    UPD.write(upout)
             total_num += len(value)
+            dup_num += len(value)
             uniq_num += 1
 
+        # Distinct Reads Output
+        myout1, myout2, upout = buildDistinctOutPE(hdict,value)
+        DIST1.write(myout1)
+        DIST2.write(myout2)
+        if upout:
+            logging.warn("Some of your reads are missing their mate pair!")
+            with open(updist, 'a') as UPDIST:
+                UPDIST.write(upout)
+        dist_num += 1
+
+    # Close Output Files
     UNIQ1.close()
     DUPS1.close()
+    DIST1.close()
     UNIQ2.close()
     DUPS2.close()
-    UPU.close()
-    UPD.close()
+    DIST2.close()
 
+    # Create Output Count Table. This is the same output as Alison's original duplicate count script.
     percent_uniq_seq = float(uniq_num) / float(total_num) * 100
     percent_uniq_reads = float(num_uniq_reads) / float(total_num) * 100
+    percent_dist_reads = float(dist_num) / float(total_num) * 100
+    percent_dup_reads = float(dup_num) / float(total_num) * 100
+
     with open(oname, 'w') as ON:
-        ON.write("file_name,total_reads,num_unique_seq,per_uniq_seq,num_unique_reads,per_uniq_reads\n")
-        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads]
+        ON.write("file_name,total_reads,num_unique_seq,per_unique_seq,num_unique_reads,per_unique_reads,num_distinct_reads,per_distinct_reads,num_duplicate_reads,per_duplicate_reads\n")
+        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads,dist_num,percent_dist_reads,dup_num,percent_dup_reads]
         ON.write(','.join([str(x) for x in myout])+"\n")
 
     counts = dict()
@@ -173,7 +235,7 @@ def writeOutputPE(hdict,sdict,uname,dname,upuniq,updup,oname,tname):
     with open(tname, 'w') as OT:
         sorted_counts = sorted(counts.iteritems(), key=operator.itemgetter(1), reverse=True)
         for item in sorted_counts:
-            OT.write(str(item[1]) + ' ' + str(item[0]).strip() + "\n")
+            OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
 
 
 def main():
@@ -188,9 +250,10 @@ def main():
     odir = os.path.abspath(args.odir)
 
     # Construct output files for read 1 or SE reads
-    uname1, dname1 = getName(odir, args.r1)
+    uname1, duname1, diname1 = getName(odir, args.r1)
     uname = [uname1]
-    dname = [dname1]
+    duname = [duname1]
+    diname = [diname1]
 
     # Read in first fastq file.
     hdict = collections.defaultdict(list)
@@ -200,10 +263,11 @@ def main():
 
     if args.r2:
         # Construct output files for read 2
-        uname2, dname2 = getName(odir, args.r2)
-        upuniq, updup = getNameUnpaired(odir, args.r1, args.r2)
+        uname2, duname2, diname2 = getName(odir, args.r2)
+        upuniq, updup, updist = getNameUnpaired(odir, args.r1, args.r2)
         uname.append(uname2)
-        dname.append(dname2)
+        duname.append(duname2)
+        diname.append(diname2)
 
         # Read in second fastq file
         logging.info("Reading '%s'" % (args.r2))
@@ -213,12 +277,12 @@ def main():
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
         sdict = idDups(hdict)
-        writeOutputPE(hdict,sdict,uname,dname,upuniq,updup,args.oname,args.tname)
+        writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,args.oname,args.tname)
     else:
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
         sdict = idDups(hdict)
-        writeOutputSE(hdict,sdict,uname,dname,args.oname,args.tname)
+        writeOutputSE(hdict,sdict,uname,duname,diname,args.oname,args.tname)
 
 
 if __name__=='__main__':
