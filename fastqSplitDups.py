@@ -135,8 +135,8 @@ def writeOutputSE(hdict,sdict,uname,duname,diname,oname,tname):
     percent_dup_reads = float(dup_num) / float(total_num) * 100
 
     with open(oname, 'w') as ON:
-        ON.write("file_name,total_reads,num_unique_seq,per_unique_seq,num_unique_reads,per_unique_reads,num_distinct_reads,per_distinct_reads,num_duplicate_reads,per_duplicate_reads\n")
-        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads,dist_num,percent_dist_reads,dup_num,percent_dup_reads]
+        ON.write("file_name,total_reads,num_unique_reads,per_unique_reads,num_distinct_reads,per_distinct_reads,num_duplicate_reads,per_duplicate_reads\n")
+        myout = [os.path.basename(oname),total_num,num_uniq_reads,percent_uniq_reads,dist_num,percent_dist_reads,dup_num,percent_dup_reads]
         ON.write(','.join([str(x) for x in myout])+"\n")
 
     counts = dict()
@@ -237,8 +237,8 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
     percent_dup_reads = float(dup_num) / float(total_num) * 100
 
     with open(oname, 'w') as ON:
-        ON.write("file_name,total_reads,num_unique_seq,per_unique_seq,num_unique_reads,per_unique_reads,num_distinct_reads,per_distinct_reads,num_duplicate_reads,per_duplicate_reads\n")
-        myout = [os.path.basename(oname),total_num,uniq_num,percent_uniq_seq,num_uniq_reads,percent_uniq_reads,dist_num,percent_dist_reads,dup_num,percent_dup_reads]
+        ON.write("file_name,total_reads,num_unique_reads,per_unique_reads,num_distinct_reads,per_distinct_reads,num_duplicate_reads,per_duplicate_reads\n")
+        myout = [os.path.basename(oname),total_num,num_uniq_reads,percent_uniq_reads,dist_num,percent_dist_reads,dup_num,percent_dup_reads]
         ON.write(','.join([str(x) for x in myout])+"\n")
 
     counts = dict()
