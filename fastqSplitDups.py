@@ -198,6 +198,9 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
     dup_num = 0
     dist_num = 0
 
+    # Raise a flag if there are reads that are missing thier mate-pair
+    flag_unpaired = 0
+
     for value in sdict.values():
         if len(value) == 1:
             # Unique Reads Output
@@ -205,7 +208,7 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
             UNIQ1.write(myout1)
             UNIQ2.write(myout2)
             if upout:
-                logging.warn("Some of your reads are missing their mate pair!")
+                flag_unpaired = 1
                 with open(upuniq, 'a') as UPU:
                     UPU.write(upout)
             num_uniq_reads += 1
@@ -217,7 +220,7 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
             DUPS1.write(myout1)
             DUPS2.write(myout2)
             if upout:
-                logging.warn("Some of your reads are missing their mate pair!")
+                flag_unpaired = 1
                 with open(updup, 'a') as UPD:
                     UPD.write(upout)
             total_num += len(value)
@@ -229,10 +232,13 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
         DIST1.write(myout1)
         DIST2.write(myout2)
         if upout:
-            logging.warn("Some of your reads are missing their mate pair!")
+            flag_unpaired = 1
             with open(updist, 'a') as UPDIST:
                 UPDIST.write(upout)
         dist_num += 1
+
+    if flag_unpaired == 1:
+        logging.warn("Some of your reads are missing their mate pair!")
 
     # Close Output Files
     UNIQ1.close()
