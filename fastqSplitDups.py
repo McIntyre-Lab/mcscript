@@ -79,6 +79,13 @@ def idDups(hdict):
         sdict[seq].append(key)
     return(sdict)
 
+def silentRemove(filename):
+    """ Remove a file if it exists """
+    try:
+        os.remove(filename)
+    except:
+        pass
+
 def buildOutSE(hdict,vlist):
     myout = ''
     for value in vlist:
@@ -179,6 +186,11 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
     UNIQ2 = open(uname[1], 'w')
     DUPS2 = open(duname[1], 'w')
     DIST2 = open(diname[1], 'w')
+
+    # Remove unpaired files if they already exists since I am doing append steps
+    silentRemove(upuniq)
+    silentRemove(updup)
+    silentRemove(updist)
 
     total_num = 0
     num_uniq_reads = 0
@@ -291,7 +303,6 @@ def main(args):
 
 
 if __name__=='__main__':
-
     # Turn on Logging if option -g was given
     args = getOptions()
     if args.log:
@@ -299,11 +310,13 @@ if __name__=='__main__':
     else:
         setLogger(os.devnull,logging.INFO)
 
+    # Get Git information and start log
     git_status, gitdir = getGit()
     logging.info("Starting %s", __file__) 
     logging.info("Running script from  %s", gitdir) 
     logging.info("Git commit id: %s", git_status)
 
+    # Run Main part of the script
     main(args)
 
     logging.info("Script complete.")
