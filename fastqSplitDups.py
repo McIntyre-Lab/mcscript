@@ -17,8 +17,8 @@ def getOptions():
     parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Summary table of read counts in csv format [Required]")
     parser.add_argument("-t", "--table", dest="tname", action='store', required=True, help="Table showing each sequence and the number of reads with that sequence in tsv format [Required]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Log File") 
-    #args = parser.parse_args()
-    args = parser.parse_args(['-r1', '/home/jfear/tmp/fq/r1.fq', '-r2', '/home/jfear/tmp/fq/r2.fq', '--outdir', '/home/jfear/tmp/files', '-o', '/home/jfear/tmp/files/counts.csv', '-t', '/home/jfear/tmp/files/cnts_table.tsv', '-g', '/home/jfear/tmp/files/test.log'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['-r1', '/home/jfear/tmp/fq/r1.fq', '-r2', '/home/jfear/tmp/fq/r2.fq', '--outdir', '/home/jfear/tmp/files', '-o', '/home/jfear/tmp/files/counts.csv', '-t', '/home/jfear/tmp/files/cnts_table.tsv', '-g', '/home/jfear/tmp/files/test.log'])
     return(args)
 
 def setLogger(fname,loglevel):
