@@ -25,6 +25,18 @@ def setLogger(fname,loglevel):
     """ Function to handle error logging """
     logging.basicConfig(filename=fname, level=loglevel, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
+def getGit():
+    """ This function will parse the current Git commit version. This will
+    allow recording of exactly which script was used to create a given
+    output."""
+    import subprocess
+    # get full path to script
+    fullname = os.path.abspath(__file__)
+    gitdir = os.path.dirname(fullname)
+    label = subprocess.check_output(["git", "--git-dir="+gitdir+"/.git", "--work-tree="+gitdir,"rev-parse","HEAD"])
+    return(label.rstrip(), gitdir)
+
+
 def getName(odir, fname):
     """ This function creates unique and duplicate dataset names. """
     bname = os.path.basename(fname)
@@ -238,15 +250,8 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
             OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
 
 
-def main():
+def main(args):
     """ MAIN Function to execute everything """
-    # Turn on Logging if option -g was given
-    args = getOptions()
-    if args.log:
-        setLogger(args.log,logging.INFO)
-    else:
-        setLogger(os.devnull,logging.INFO)
-
     odir = os.path.abspath(args.odir)
 
     # Construct output files for read 1 or SE reads
@@ -286,5 +291,19 @@ def main():
 
 
 if __name__=='__main__':
-    main()
+
+    # Turn on Logging if option -g was given
+    args = getOptions()
+    if args.log:
+        setLogger(args.log,logging.INFO)
+    else:
+        setLogger(os.devnull,logging.INFO)
+
+    git_status, gitdir = getGit()
+    logging.info("Starting %s", __file__) 
+    logging.info("Running script from  %s", gitdir) 
+    logging.info("Git commit id: %s", git_status)
+
+    main(args)
+
     logging.info("Script complete.")
