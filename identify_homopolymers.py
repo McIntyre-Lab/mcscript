@@ -31,7 +31,7 @@ def selectFormat(fname):
     elif fileExtension == '.fa' or fileExtension == '.fasta':
         filetype = 'fa'
     else:
-        raise ValueError('Please specify if the input file is "fastq" or "fastq"')
+        raise ValueError('Please specify if the input file is "fastq" or "fasta"')
     return filetype
 
 def writeOutput(handle, myList):
