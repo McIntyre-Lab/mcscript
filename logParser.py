@@ -74,7 +74,7 @@ def main():
         lastPerUniq,lastPerAln = 0,0
         if finalBowtieUnaln!=0:
             lastPerUniq=float(uniq)/finalBowtieUnaln * 100           
-            lastPerAln=float(ambig)+uniq/finalBowtieUnaln * 100
+            lastPerAln=float(ambig+uniq)/finalBowtieUnaln * 100
         uniqAln=uniqAln+uniq
         outputFile.write(','.join(str(i) for i in [uniq,ambig,lastPerUniq,lastPerAln])+',')
      
