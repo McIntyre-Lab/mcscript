@@ -7,7 +7,7 @@ def getOptions():
     """ Function to pull in arguments """
     parser = argparse.ArgumentParser(description="Takes a tabular file (e.g. CSV, TSV) and splits its rows up into multiple files.")
     parser.add_argument("-f", dest="fname", action='store', required=True, help="Path to tabular file [Required]")
-    parser.add_argument("--prefix", dest="prefix", action='store', required=True, help="Output file prefix [Required]")
+    parser.add_argument("--prefix", dest="prefix", action='store', required=False, help="Output file prefix, if prefix not provided input file name will be used [Optional]")
     parser.add_argument("-o", dest="odir", action='store', required=False, help="Output directory, if not provided will create output in the original file's folder [Optional]")
     parser.add_argument("--header", dest="header", action='store_true', help="Indicate if the file in question has a header [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Path and name of log file [Optional]") 
@@ -79,6 +79,9 @@ def nlines(args):
 def main(args):
     if not args.odir:
         args.odir = os.path.dirname(args.fname)
+
+    if not args.prefix:
+        args.prefix = os.path.splitext(os.path.basename(args.fname))[0]
 
     if args.nfiles:
         logging.info("Splitting into {0} files.".format(args.nfiles))
