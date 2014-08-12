@@ -14,8 +14,8 @@ def getOptions():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--nfiles", dest="nfiles", type=int, action='store', help="The number of files that you want to create")
     group.add_argument("--nlines", dest="nlines", type=int, action='store', help="The number of lines that you want in each output file")
-    #args = parser.parse_args()
-    args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nlines', '3', '--header'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nlines', '3', '--header'])
     return(args)
 
 def setLogger(fname,loglevel):
