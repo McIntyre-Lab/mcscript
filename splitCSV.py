@@ -47,7 +47,7 @@ def nfiles(args):
                     with open(fileName, 'w') as OUT:
                         OUT.write(row)
             else:
-                with open(fileArray[writeFlag], 'a') as OUT:
+                with open(fileArray[writeFlag], 'a+') as OUT:
                     OUT.write(row)
                     if writeFlag < args.nfiles - 1:
                         writeFlag += 1
