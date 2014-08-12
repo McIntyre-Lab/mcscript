@@ -15,7 +15,7 @@ def getOptions():
     group.add_argument("--nfiles", dest="nfiles", type=int, action='store', help="The number of files that you want to create")
     group.add_argument("--nlines", dest="nlines", type=int, action='store', help="The number of lines that you want in each output file")
     args = parser.parse_args()
-    #args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nlines', '3', '--header'])
+    #args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nfiles', '100', '--header'])
     return(args)
 
 def setLogger(fname,loglevel):
@@ -36,13 +36,13 @@ def getGit():
 def nfiles(args):
     """ Split a tabular file into N files """
     fileArray = []
-    for numFile in range(0, args.nfiles):
+    for numFile in range(1, args.nfiles+1):
         fileArray.append(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, numFile)))
 
     writeFlag = 0
     with open(args.fname, 'r') as fname:
         for index, row in enumerate(fname):
-            if index == 1 and args.header:
+            if index == 0 and args.header:
                 for fileName in fileArray:
                     with open(fileName, 'w') as OUT:
                         OUT.write(row)
@@ -58,7 +58,7 @@ def nlines(args):
     """ Split a tabular file such that all output files have N rows """
     header = ''
     writeFlag = 0
-    fileNum = 0
+    fileNum = 1
     with open(args.fname, 'r') as fname:
         for index, row in enumerate(fname):
             if index == 0 and args.header:
