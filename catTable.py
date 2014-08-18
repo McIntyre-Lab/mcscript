@@ -2,7 +2,7 @@
 import argparse 
 import os
 import sys
-import glob
+import re
 import logging
 
 def getOptions():
@@ -34,13 +34,6 @@ def getGit():
     label = subprocess.check_output(["git", "--git-dir="+gitdir+"/.git", "--work-tree="+gitdir,"rev-parse","HEAD"])
     return(label.rstrip(), gitdir)
 
-def fileList(args):
-    """ Create a list of files to process. If listed on the command line just
-    use that. """
-
-    if len(args.fname) == 1:
-        args.fname = glob.glob(args.fname[0])
-
 def removeOldOutput(args):
     """ check if the old output exists and remove the old version """
     try:
@@ -51,11 +44,9 @@ def removeOldOutput(args):
 
 def createOutput(args):
     """ Use input file information to create an output file """
-    if '*' in args.fname[0]:
-        args.oname = os.path.join(args.odir, os.path.basename(args.fname[0]).replace('*', 'summary'))
-    else:
-        myName = os.path.splitext(os.path.basename(args.fname[0]))
-        args.oname = os.path.join(args.odir, myName[0] + '_summary' + myName[1])
+    bname = os.path.splitext(os.path.basename(args.fname[0]))
+    sumName = re.sub('_\d+$', '_summary', bname[0])
+    args.oname = os.path.join(args.odir, sumName + bname[1])
     logging.info("File will be output to: {0}".format(args.oname))
 
     # remove old output if it is there
@@ -77,7 +68,6 @@ def main(args):
     createOutput(args)
 
     # get the list of files to process
-    fileList(args)
     logging.info("A total of {0} files will be combined".format(len(args.fname)))
 
 
