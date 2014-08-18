@@ -12,9 +12,8 @@ def getOptions():
     parser.add_argument("-o", dest="odir", action='store', required=False, help="Output directory, if not provided will create output in the original file's folder [Optional]")
     parser.add_argument("--header", dest="header", action='store_true', help="Indicate if the file in question has a header [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Path and name of log file [Optional]") 
-    #args = parser.parse_args()
+    args = parser.parse_args()
     #args = parser.parse_args(['-f', '/home/jfear/tmp/*.txt', '-g', '/home/jfear/tmp/test.log', '--header'])
-    args = parser.parse_args(['-f', '/home/jfear/tmp/*.txt', '--header'])
     return(args)
 
 def setLogger(fname, loglevel, stream):
