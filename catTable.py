@@ -49,16 +49,20 @@ def createOutput(args):
         args.oname = os.path.join(args.odir, args.outname)
     else:
         bname = os.path.splitext(os.path.basename(args.fname[0]))
-        try:
-            # Files names incremented: foo_1.csv, foo_2.csv
-            sumName = re.sub('_\d+$', '_summary', bname[0])
-        except:
-            try:
-                # Files name are incremented by fusion id: foo_S1000_SI.csv, foo_F1002_SI.csv
-                sumName = re.sub('[SF]\d+_SI$', '_summary', bname[0])
-            except:
-                # Everything else just append summary
-                sumName = bname[0] + '_summary'
+
+        # try to guess how files are named
+        # REGEX patterns
+        incremental = re.compile('_\d+$')   ## Files names are incremented: foo_1.csv, foo_2.csv
+        fusion = re.compile('_[FS]\d+_SI$') ## Files name contain fusion id: foo_S1000_SI.csv, foo_F1002_SI.csv
+
+        if re.search(incremental, bname[0]):
+            sumName = re.sub(incremental, '_summary', bname[0])
+        elif re.search(fusion, bname[0]):
+            sumName = re.sub(fusion, '_summary', bname[0])
+        else:
+            # Everything else just append summary
+            sumName = bname[0] + '_summary'
+
         args.oname = os.path.join(args.odir, sumName + bname[1])
         logging.info("File will be output to: {0}".format(args.oname))
 
@@ -91,7 +95,8 @@ def main(args):
 
         for currFile in args.fname:
             with open(currFile, 'r') as INPUT:
-                INPUT.next()
+                if args.header:
+                    INPUT.next()
                 for row in INPUT:
                     OUT.write(row)
 
