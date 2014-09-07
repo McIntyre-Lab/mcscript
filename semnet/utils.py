@@ -6,7 +6,7 @@ def flatten_list(myVars):
     single list and creates a string. """
 
     result = []
-    for element in myList: 
+    for element in myVars: 
         if hasattr(element, '__iter__'):
             # if tuple flatten and append
             result.extend(element)
