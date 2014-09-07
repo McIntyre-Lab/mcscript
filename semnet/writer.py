@@ -10,7 +10,7 @@ def output_model_to_log(path, model_type, count):
                                                                                                                                              path.xvar, path.beta, path.gamma, path.phi)
     logging.info(message)
 
-def createOutput(path, model_type, template=None):
+def createOutput(path, model_type):
     global args
 
     # If dealing with a baseline model, set the count to 0
@@ -22,8 +22,8 @@ def createOutput(path, model_type, template=None):
         model = path.count
 
     # If the user supplied a template file then use it.
-    if template:
-        calis = CalisOut(path, model_type, args.lname, args.mname, args.gname, template)
+    if args.template:
+        calis = CalisOut(path, model_type, args.lname, args.mname, args.gname, args.template)
     else:
         calis = CalisOut(path, model_type, args.lname, args.mname, args.gname)
 
