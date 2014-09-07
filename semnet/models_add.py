@@ -8,7 +8,6 @@ from semnet import utils
 ################################################################################
 # Add genes to the network
 ################################################################################
-
 # Add genes downstream of nodes
 def add_genes_ds_beta(path, newgene, args):
     """ Iterate through beta matrix and place new genes downstream of each beta. """
@@ -110,56 +109,32 @@ def add_genes_above_gamma(path, newgene, args):
     # Initialize default values
     path.reinit()
 
-    index = 0
-    for xloc, gene in enumerate(path.xvar):
-        # determine if gene has multiple isoforms
-        if hasattr(gene,'__iter__'):
-            xvarCount = len(gene)
-        else:
-            xvarCount = 1
+    _xvar = list(path.xvar)
 
-        xvarStart = index
-        xvarEnd = xvarStart + xvarCount
-        coords = (xvarStart, xvarEnd)
-        index = xvarEnd
-
-        # Initialize default values again
+    for gene in _xvar:
+        # Initialize default values
         path.reinit()
 
-        # Expand matrices
+        # Convert the current exogenous gene to an enogenous gene
+        path.convert_ExogToEndog(gene)
+
+        # determine if old exogenous gene has multiple isoforms
+        if hasattr(gene,'__iter__'):
+            isoCnt = len(gene)
+        else:
+            isoCnt = 1
+
+        # Add my new gene to the xvar list
+        path.xvar.append(newgene.name)
+
+        # Expand gamma and phi matrices for my new gene
         for iso in range(0, newgene.count):
             # Adding new exogenous genes
             path.expand_gamma(axis=1)
             path.expand_phi()
 
-        for iso in range(0, xvarCount):
-            path.expand_beta()
-            path.expand_gamma()
-
-        # Fill in 1's for GAMMA and PHI
-        _gRow, _gCol = np.shape(path.gamma)
-        path.gamma[(_gRow - xvarCount):, (_gCol - newgene.count):] = 1
-
-        _pRow, _pCol = np.shape(path.phi)
-        path.phi[(_pRow - newgene.count):, (_pCol - newgene.count):] = 1
-
-        # Fill in 1's for BETA. Need to use locations information from GAMMA.
-        # To do this, slice out the current column from GAMMA identify
-        # locations of 1's and add to end of BETA 
-        for gammaCol in range(*coords):
-            gSlice = path.gamma[:, gammaCol]
-            for nPos in np.flatnonzero(gSlice):
-                path.beta[nPos, path.bCol:] = 1
-
-        # Delete appropriate columns/rows from GAMMA and PHI
-        path.del_col_gamma(coords)
-        path.del_row_col_phi(coords)
-
-        # Edit variable list
-        del path.xvar[xloc]
-        path.xvar.append(newgene.name)
-
-        path.yvar.append(gene)
+        # Set the 1's in gamma matrix where new exogenous affects old exogenous
+        path.gamma[-isoCnt:, -newgene.count:] = 1
 
         # Build SAS output
         createOutput(path, model_type, args)

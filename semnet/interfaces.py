@@ -18,9 +18,8 @@ class SemPath(object):
         self._gamma = gamma.copy()
         self._phi = phi.copy()
 
-        self.bRow, self.bCol = np.shape(beta)
-        self.gRow, self.gCol = np.shape(gamma)
-        self.pRow, self.pCol = np.shape(phi)
+        # Set row/col counts
+        self.rc_count()
 
         # Initialize a model counter
         self.count = 1
@@ -28,6 +27,12 @@ class SemPath(object):
     def __repr__(self):
         """ Simple method to print out the information stored in the __init__ """
         return "\n\nYvar: {0}\nXvar: {1}\n\nBeta:\n{2}\n\nGamma:\n{3}\n\nPhi:\n{4}\n\n".format(self.yvar, self.xvar, self.beta, self.gamma, self.phi)
+
+    def rc_count(self):
+        """ function to count the number of rows and columns of beta, gamma, phi """
+        self.bRow, self.bCol = np.shape(self.beta)
+        self.gRow, self.gCol = np.shape(self.gamma)
+        self.pRow, self.pCol = np.shape(self.phi)
 
     def reinit(self):
         """ Re-initialize the matrices. The adding genes process changes the
@@ -39,6 +44,9 @@ class SemPath(object):
         self.beta = self._beta.copy()
         self.gamma = self._gamma.copy()
         self.phi = self._phi.copy()
+
+        # Set row/col counts
+        self.rc_count()
 
     def count_increment(self):
         self.count += 1
@@ -69,21 +77,61 @@ class SemPath(object):
         """
         self.phi = np.insert(self.phi, self.pRow, values=0, axis=0)
         self.phi = np.insert(self.phi, self.pRow, values=0, axis=1)
+        self.phi[-1,-1] = 1
 
-    def del_col_gamma(self, coords):
+    def del_col_gamma(self, index):
         """ Uses numpy to delete columns from the gamma matrix. coords is a
         tuple with the start and end coordinates for the columns you want
         delete.
         """
-        self.gamma = np.delete(self.gamma, range(*coords), 1)
+        self.gamma = np.delete(self.gamma, index, 1)
 
-    def del_row_col_phi(self, coords):
+    def del_row_col_phi(self, index):
         """ Uses numpy to delete columns and rows from the phi matrix. coords
         is a tuple with the start and end coordinates for the columns you want
         delete.
         """
-        self.phi = np.delete(self.phi, range(*coords), 0)
-        self.phi = np.delete(self.phi, range(*coords), 1)
+        self.phi = np.delete(self.phi, index, 0)
+        self.phi = np.delete(self.phi, index, 1)
+
+    def convert_ExogToEndog(self, gene):
+        """ Convert a gene/isoform from being exogenous to endogenous """
+
+        # Get gene location from xvar, remember there could be isoforms
+        xInd = []
+        if hasattr(gene,'__iter__'):
+            for iso in gene:
+                xInd.append(self.xvar.index(iso))
+        else:
+            xInd.append(self.xvar.index(gene))
+
+        for ind in xInd:
+            # Pull a list of causative effects from gamma, we need to transfer
+            # these to the beta matrix
+            effects = self.gamma[:,ind]
+
+            # Delete the corresponding col from gamma and row and col from phi
+            self.del_col_gamma(ind)
+            self.del_row_col_phi(ind)
+
+            # Add a row of zeros to the bottom of gamma
+            self.expand_gamma()
+
+            # Expand the beta matrix 
+            self.expand_beta()
+
+            # Identify where the effects from gamma are equal to 1 and set those in
+            # beta
+            causeInd = np.where(np.array(effects) == 1)[0]
+            for ind2 in causeInd:
+                self.beta[ind2, -1] = 1
+
+            # Remove the gene/isoform from the xvar list and add it to the yvar list
+            curr =  self.xvar.pop(ind)
+            self.yvar.append(curr)
+
+            # Set row/col counts
+            self.rc_count()
 
 class NewGene(object):
     """ When adding genes, users provide a list of genes/isoforms to add. It is
