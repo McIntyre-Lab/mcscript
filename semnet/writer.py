@@ -10,8 +10,7 @@ def output_model_to_log(path, model_type, count):
                                                                                                                                              path.xvar, path.beta, path.gamma, path.phi)
     logging.info(message)
 
-def createOutput(path, model_type):
-    global args
+def createOutput(path, model_type, args):
 
     # If dealing with a baseline model, set the count to 0
     if model_type == 'Baseline':

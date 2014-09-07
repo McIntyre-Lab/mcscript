@@ -8,15 +8,15 @@ from semnet import utils
 ################################################################################
 # Construct baseline model
 ################################################################################
-def baseline(path):
+def baseline(path, args):
     """ Create out for running the baseline model. """
     model_type = "Baseline"
-    createOutput(path, model_type)
+    createOutput(path, model_type, args)
 
 ################################################################################
 # Add additional links to existing genes in the network
 ################################################################################
-def add_additional_links(path, newgene):
+def add_additional_links(path, newgene, args):
     """ Function to take a gene that is already in the model and add additional links. """
     model_type = "Adding additional links"
 
@@ -50,7 +50,7 @@ def add_additional_links(path, newgene):
         for row in _bRows:
             if row not in _bCols:    # For identifiability you cannot act on yourself
                 path.beta[row, start:end] = 1
-                createOutput(path, model_type)
+                createOutput(path, model_type, args)
                 path.beta[row, start:end] = 0
                 path.count_increment()
 
@@ -63,7 +63,7 @@ def add_additional_links(path, newgene):
         _gRows = np.where(path.gamma[:,start] == 0)[0]
         for row in _gRows:
             path.gamma[row, start:end] = 1
-            createOutput(path, model_type)
+            createOutput(path, model_type, args)
             path.gamma[row, start:end] = 0
             path.count_increment()
     else:
@@ -76,7 +76,7 @@ def add_additional_links(path, newgene):
 ################################################################################
 
 # Add genes downstream of nodes
-def add_genes_ds_beta(path, newgene):
+def add_genes_ds_beta(path, newgene, args):
     """ Iterate through beta matrix and place new genes downstream of each beta. """
     model_type = "Adding Genes Downstream of Beta"
 
@@ -90,11 +90,11 @@ def add_genes_ds_beta(path, newgene):
     # Iterate through BETA matrix and output all possible models
     for i in range(0, path.bCol):
         path.beta[path.bRow:, i] = 1
-        createOutput(path, model_type)
+        createOutput(path, model_type, args)
         path.beta[path.bRow:, i] = 0
         path.count_increment()
 
-def add_genes_ds_gamma(path, newgene):
+def add_genes_ds_gamma(path, newgene, args):
     """ Iterate through gamma matrix and place new genes downstream of each gamma. """
     model_type = "Adding Genes Downstream of Gamma"
 
@@ -118,12 +118,12 @@ def add_genes_ds_gamma(path, newgene):
         index = end
 
         path.gamma[path.bRow:, start:end] = 1
-        createOutput(path, model_type)
+        createOutput(path, model_type, args)
         path.gamma[path.bRow:, start:end] = 0
         path.count_increment()
 
 # Add genes upstream of nodes
-def add_genes_above_beta(path, newgene):
+def add_genes_above_beta(path, newgene, args):
     """ Iterate through gamma matrix and place new genes upstream of betas. """
     model_type = "Adding Genes upstream of Beta"
 
@@ -163,10 +163,10 @@ def add_genes_above_beta(path, newgene):
         path.phi[(_pRow - newgene.count):, (_pCol - newgene.count):] = 1
 
         # Build SAS output
-        createOutput(path, model_type)
+        createOutput(path, model_type, args)
         path.count_increment()
 
-def add_genes_above_gamma(path, newgene):
+def add_genes_above_gamma(path, newgene, args):
     """ Iterate through gamma matrix and place new genes upstream of gammas. """
     model_type = "Adding Genes upstream of Gamma"
 
@@ -225,11 +225,11 @@ def add_genes_above_gamma(path, newgene):
         path.yvar.append(gene)
 
         # Build SAS output
-        createOutput(path, model_type)
+        createOutput(path, model_type, args)
         path.count_increment()
 
 # Add genes between connected nodes
-def add_genes_bt_beta(path, newgene):
+def add_genes_bt_beta(path, newgene, args):
     """ Iterate through beta matrix and add genes between two betas. """
     model_type = "Adding Genes between Betas"
 
@@ -248,13 +248,13 @@ def add_genes_bt_beta(path, newgene):
         path.beta[row, col] = 0
         path.beta[row, path.bCol:] = 1
         path.beta[path.bRow:, col] = 1
-        createOutput(path, model_type)
+        createOutput(path, model_type, args)
         path.beta[row, col] = 1
         path.beta[row, path.bCol:] = 0
         path.beta[path.bRow:, col] = 0
         path.count_increment()
 
-def add_genes_bt_gamma_beta(path, newgene):
+def add_genes_bt_gamma_beta(path, newgene, args):
     """ Iterate through gamma matrix and place new genes between gamma and ds beta. """
     model_type = "Adding Genes between Gamma and Beta"
 
@@ -286,7 +286,7 @@ def add_genes_bt_gamma_beta(path, newgene):
             if np.all(path.gamma[row_index, start:end] == 1):
                 path.gamma[path.gRow:, start:end] = 1
                 path.gamma[row_index, start:end] = 0
-                createOutput(path, model_type)
+                createOutput(path, model_type, args)
                 path.gamma[path.gRow:, start:end] = 0
                 path.gamma[row_index, start:end] = 1
                 path.count_increment()
