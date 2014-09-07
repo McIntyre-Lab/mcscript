@@ -1,10 +1,13 @@
 #!/usr/bin/env python
+import os
 import numpy as np
 from string import Template
 from semnet import utils
 
+
 class CalisOut(object):
-    def __init__(self, path, model, libname, sasdat, gene, template='./templates/calis.sas'):
+    def __init__(self, path, model, libname, sasdat, gene, 
+                 template=os.path.join(os.path.dirname(__file__), 'templates/calis.sas')):
         self.model = model              # model number
         self.libname = libname          # sas libname to use in sas program
         self.sasdat = sasdat            # input sasdataset for the program

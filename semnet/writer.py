@@ -6,8 +6,7 @@ from semnet.sas import CalisOut
 def output_model_to_log(path, model_type, count):
     """ Create output for the log """
     # Construct Output
-    message = "\nModel number {0}\nModel type: {1}\nY-variables: {2}\nX-variables: {3}\n\nBeta:\n{4}\n\nGAMMA:\n{5}\n\nPHI:\n{6}\n\n".format(count, model_type, path.yvar, 
-                                                                                                                                             path.xvar, path.beta, path.gamma, path.phi)
+    message = "\nModel number {0}\nModel type: {1}{2}".format(count, model_type, str(path)) 
     logging.info(message)
 
 def createOutput(path, model_type, args):

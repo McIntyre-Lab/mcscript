@@ -27,7 +27,7 @@ class SemPath(object):
 
     def __repr__(self):
         """ Simple method to print out the information stored in the __init__ """
-        return "\n\nXvar: {0}\nYvar: {1}\n\nBeta:\n{2}\n\nGamma:\n{3}\n\nPhi:\n{4}\n\n".format(self.xvar, self.yvar, self.beta, self.gamma, self.phi)
+        return "\n\nYvar: {0}\nXvar: {1}\n\nBeta:\n{2}\n\nGamma:\n{3}\n\nPhi:\n{4}\n\n".format(self.yvar, self.xvar, self.beta, self.gamma, self.phi)
 
     def reinit(self):
         """ Re-initialize the matrices. The adding genes process changes the
