@@ -14,7 +14,7 @@ def baseline(path):
     createOutput(path, model_type)
 
 ################################################################################
-# Add additional links to baseline model
+# Add additional links to existing genes in the network
 ################################################################################
 def add_additional_links(path, newgene):
     """ Function to take a gene that is already in the model and add additional links. """
@@ -72,7 +72,7 @@ def add_additional_links(path, newgene):
         return
 
 ################################################################################
-# Add genes to the baseline model
+# Add genes to the network
 ################################################################################
 
 # Add genes downstream of nodes
@@ -123,6 +123,49 @@ def add_genes_ds_gamma(path, newgene):
         path.count_increment()
 
 # Add genes upstream of nodes
+def add_genes_above_beta(path, newgene):
+    """ Iterate through gamma matrix and place new genes upstream of betas. """
+    model_type = "Adding Genes upstream of Beta"
+
+    # Initialize default values
+    path.reinit()
+
+    index = 0
+    for gene in path.yvar:
+        # determine if gene has multiple isoforms
+        if hasattr(gene,'__iter__'):
+            yvarCount = len(gene)
+        else:
+            yvarCount = 1
+
+        yvarStart = index
+        yvarEnd = yvarStart + yvarCount
+        coords = (yvarStart, yvarEnd)
+        index = yvarEnd
+
+        # Initialize default values
+        path.reinit()
+
+        # Edit variable list
+        path.xvar.append(newgene.name)
+
+        # Expand matrices GAMMA and PHI matrices
+        for iso in range(0, newgene.count):
+            # Adding new exogenous genes
+            path.expand_gamma(axis=1)
+            path.expand_phi()
+
+        # Fill in 1's for GAMMA and PHI
+        _gRow, _gCol = np.shape(path.gamma)
+        path.gamma[yvarStart:yvarEnd, (_gCol - newgene.count):] = 1
+
+        _pRow, _pCol = np.shape(path.phi)
+        path.phi[(_pRow - newgene.count):, (_pCol - newgene.count):] = 1
+
+        # Build SAS output
+        createOutput(path, model_type)
+        path.count_increment()
+
 def add_genes_above_gamma(path, newgene):
     """ Iterate through gamma matrix and place new genes upstream of gammas. """
     model_type = "Adding Genes upstream of Gamma"
@@ -185,50 +228,32 @@ def add_genes_above_gamma(path, newgene):
         createOutput(path, model_type)
         path.count_increment()
 
-def add_genes_above_beta(path, newgene):
-    """ Iterate through gamma matrix and place new genes upstream of betas. """
-    model_type = "Adding Genes upstream of Beta"
+# Add genes between connected nodes
+def add_genes_bt_beta(path, newgene):
+    """ Iterate through beta matrix and add genes between two betas. """
+    model_type = "Adding Genes between Betas"
 
-    # Initialize default values
+    # Initialize default values again
     path.reinit()
 
-    index = 0
-    for gene in path.yvar:
-        # determine if gene has multiple isoforms
-        if hasattr(gene,'__iter__'):
-            yvarCount = len(gene)
-        else:
-            yvarCount = 1
+    # Add newGene to yvar because they are new endogenous genes
+    path.yvar.append(newgene.name)
 
-        yvarStart = index
-        yvarEnd = yvarStart + yvarCount
-        coords = (yvarStart, yvarEnd)
-        index = yvarEnd
+    # Expand beta to account for new isoforms
+    for iso in range(0, newgene.count):
+        path.expand_beta()
 
-        # Initialize default values
-        path.reinit()
-
-        # Edit variable list
-        path.xvar.append(newgene.name)
-
-        # Expand matrices GAMMA and PHI matrices
-        for iso in range(0, newgene.count):
-            # Adding new exogenous genes
-            path.expand_gamma(axis=1)
-            path.expand_phi()
-
-        # Fill in 1's for GAMMA and PHI
-        _gRow, _gCol = np.shape(path.gamma)
-        path.gamma[yvarStart:yvarEnd, (_gCol - newgene.count):] = 1
-
-        _pRow, _pCol = np.shape(path.phi)
-        path.phi[(_pRow - newgene.count):, (_pCol - newgene.count):] = 1
-
-        # Build SAS output
+    rows, cols = np.nonzero(path.beta)
+    for row, col in zip(rows, cols):
+        path.beta[row, col] = 0
+        path.beta[row, path.bCol:] = 1
+        path.beta[path.bRow:, col] = 1
         createOutput(path, model_type)
+        path.beta[row, col] = 1
+        path.beta[row, path.bCol:] = 0
+        path.beta[path.bRow:, col] = 0
         path.count_increment()
 
-# Add genes between connected nodes
 def add_genes_bt_gamma_beta(path, newgene):
     """ Iterate through gamma matrix and place new genes between gamma and ds beta. """
     model_type = "Adding Genes between Gamma and Beta"
@@ -268,28 +293,3 @@ def add_genes_bt_gamma_beta(path, newgene):
             else:
                 logging.debug("The gene: {0} does not act on {1}".format(gene,path.yvar[row_index]))
         path.beta[row_index, path.bCol:] = 0
-
-def add_genes_bt_beta(path, newgene):
-    """ Iterate through beta matrix and add genes between two betas. """
-    model_type = "Adding Genes between Betas"
-
-    # Initialize default values again
-    path.reinit()
-
-    # Add newGene to yvar because they are new endogenous genes
-    path.yvar.append(newgene.name)
-
-    # Expand beta to account for new isoforms
-    for iso in range(0, newgene.count):
-        path.expand_beta()
-
-    rows, cols = np.nonzero(path.beta)
-    for row, col in zip(rows, cols):
-        path.beta[row, col] = 0
-        path.beta[row, path.bCol:] = 1
-        path.beta[path.bRow:, col] = 1
-        createOutput(path, model_type)
-        path.beta[row, col] = 1
-        path.beta[row, path.bCol:] = 0
-        path.beta[path.bRow:, col] = 0
-        path.count_increment()
