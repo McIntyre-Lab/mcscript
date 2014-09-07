@@ -6,72 +6,6 @@ from semnet.writer import createOutput
 from semnet import utils
 
 ################################################################################
-# Construct baseline model
-################################################################################
-def baseline(path, args):
-    """ Create out for running the baseline model. """
-    model_type = "Baseline"
-    createOutput(path, model_type, args)
-
-################################################################################
-# Add additional links to existing genes in the network
-################################################################################
-def add_additional_links(path, newgene, args):
-    """ Function to take a gene that is already in the model and add additional links. """
-    model_type = "Adding additional links"
-
-    # Initialize default values
-    path.reinit()
-
-    # Create a flattend list
-    _yvar = utils.flatten_list(path.yvar).split(' ')
-    _xvar = utils.flatten_list(path.xvar).split(' ')
-
-    yind = []
-    for iso in newgene.name:
-        for index, y in enumerate(_yvar):
-            if iso in y:
-                yind.append(index)
-
-    xind = []
-    for iso in newgene.name:
-        for index, x in enumerate(_xvar):
-            if iso in x:
-                xind.append(index)
-    
-    if yind:
-        # Find which columns in the beta matrix
-        start = yind[0]
-        end = start + len(yind)
-        _bCols = set(range(start, end))
-
-        # Iterate through rows with 0's and change to 1
-        _bRows = np.where(path.beta[:,start] == 0)[0]
-        for row in _bRows:
-            if row not in _bCols:    # For identifiability you cannot act on yourself
-                path.beta[row, start:end] = 1
-                createOutput(path, model_type, args)
-                path.beta[row, start:end] = 0
-                path.count_increment()
-
-    elif xind:
-        # Find which column in the gamma matrix
-        start = xind[0]
-        end = start + len(xind)
-
-        # Iterate through rows with 0's and change to 1
-        _gRows = np.where(path.gamma[:,start] == 0)[0]
-        for row in _gRows:
-            path.gamma[row, start:end] = 1
-            createOutput(path, model_type, args)
-            path.gamma[row, start:end] = 0
-            path.count_increment()
-    else:
-        message="This gene {} does not appear in the baseline model, so new links cannot be added".format(newgene.name)
-        logging.warn(message)
-        return
-
-################################################################################
 # Add genes to the network
 ################################################################################
 
@@ -87,6 +21,7 @@ def add_genes_ds_beta(path, newgene, args):
     for iso in range(0, newgene.count):
         path.expand_beta()
 
+    path.yvar.append(newgene.name)
     # Iterate through BETA matrix and output all possible models
     for i in range(0, path.bCol):
         path.beta[path.bRow:, i] = 1
@@ -105,6 +40,7 @@ def add_genes_ds_gamma(path, newgene, args):
     for iso in range(0, newgene.count):
         path.expand_gamma()
 
+    path.yvar.append(newgene.name)
     # Iterate through GAMMA matrix and output all possible models
     index = 0
     for gene in path.xvar:
@@ -129,6 +65,7 @@ def add_genes_above_beta(path, newgene, args):
 
     # Initialize default values
     path.reinit()
+    path.xvar.append(newgene.name)
 
     index = 0
     for gene in path.yvar:
@@ -197,7 +134,7 @@ def add_genes_above_gamma(path, newgene, args):
 
         for iso in range(0, xvarCount):
             path.expand_beta()
-            expand_gamma()
+            path.expand_gamma()
 
         # Fill in 1's for GAMMA and PHI
         _gRow, _gCol = np.shape(path.gamma)
