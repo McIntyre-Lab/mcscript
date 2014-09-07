@@ -23,7 +23,7 @@ class SemPath(object):
         self.pRow, self.pCol = np.shape(phi)
 
         # Initialize a model counter
-        count = 1
+        self.count = 1
 
     def __repr__(self):
         """ Simple method to print out the information stored in the __init__ """
