@@ -122,13 +122,13 @@ def buildPhi(xvar, covs):
     return Phi
 
 def createPath(fname):
-    graph = semnet.SemPath()
     paths, covs = parsePathFile(fname)
-    graph.yvar = identifyEndogenous(paths)
-    graph.xvar = identifyExogenous(yvar, paths)
-    graph.beta = buildBeta(yvar, paths)
-    graph.gamma = buildGamma(yvar, xvar, paths)
-    graph.phi = buildPhi(xvar, covs)
+    yvar = identifyEndogenous(paths)
+    xvar = identifyExogenous(yvar, paths)
+    beta = buildBeta(yvar, paths)
+    gamma = buildGamma(yvar, xvar, paths)
+    phi = buildPhi(xvar, covs)
+    graph = semnet.SemPath(xvar, yvar, beta, gamma, phi)
     return graph
 
 if __name__ == '__main__':

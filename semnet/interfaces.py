@@ -10,10 +10,6 @@ class SemPath(object):
         self.gamma = gamma
         self.phi = phi
 
-        self.bRow, self.bCol = np.shape(beta)
-        self.gRow, self.gCol = np.shape(gamma)
-        self.pRow, self.pCol = np.shape(phi)
-
         # Make a private copy of the original yvar, xvar, beta, gamma and phi
         # matrices so that I can reset after adding a gene.
         self._yvar = list(yvar)
@@ -22,8 +18,16 @@ class SemPath(object):
         self._gamma = gamma.copy()
         self._phi = phi.copy()
 
+        self.bRow, self.bCol = np.shape(beta)
+        self.gRow, self.gCol = np.shape(gamma)
+        self.pRow, self.pCol = np.shape(phi)
+
         # Initialize a model counter
         count = 1
+
+    def __repr__(self):
+        """ Simple method to print out the information stored in the __init__ """
+        return "\n\nXvar: {0}\nYvar: {1}\n\nBeta:\n{2}\n\nGamma:\n{3}\n\nPhi:\n{4}\n\n".format(self.xvar, self.yvar, self.beta, self.gamma, self.phi)
 
     def reinit(self):
         """ Re-initialize the matrices. The adding genes process changes the
@@ -90,7 +94,7 @@ class NewGene(object):
         try:
             # Determine if the gene we are adding to the model has multiple isoforms
             # and create a counter
-            self.name = newGene[0].split(' ')
+            self.name = newGene
 
             if hasattr(self.name,'__iter__'):
                 self.count = len(self.name)
@@ -98,6 +102,9 @@ class NewGene(object):
                 self.count = 1
         except ValueError:
             logging.error("If you are adding genes you need to create a new gene object.")
+
+    def __repr__(self):
+        return "\n\nNew Gene: {0}\nNumber of isoforms: {1}\n\n".format(self.name, self.count)
 
 if __name__ == '__main__':
     pass
