@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-def flatten_list(self, myVars):
+def flatten_list(myVars):
     """ Isoforms are being treated together as a group. To delineate them,
     isoforms are grouped together as tuples. For the calis statement, xvar and
     yvar need to each be a string. This function flattens these tuples into a
