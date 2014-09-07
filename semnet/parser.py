@@ -5,9 +5,17 @@ import semnet
 def rowSplitter(row, separator):
     """ Split the row of a path file based on a give separator. """
     rowSplit = [i.strip(' ') for i in row.strip().split(separator)]
-    left = rowSplit[0].split(' ')
-    right = rowSplit[1].split(' ')
+    left = isoSplitter(rowSplit[0])
+    right = isoSplitter(rowSplit[1])
     return(left, right)
+
+def isoSplitter(lst, separator='|'):
+    """ Split isoforms that are concatenated with '|' """
+    genes = lst.split(' ')
+    for index, gene in enumerate(genes):
+        if '|' in gene:
+            genes[index] = tuple(gene.split('|'))
+    return genes
 
 def parsePathFile(fname):
     """ Iterate over a 'Path' file. Determine which genes covary and which
@@ -65,36 +73,64 @@ def buildBeta(yvar, paths):
     endogenous genes. In other words, Beta is a 0,1 matrix of the relationships
     between endogenous (yvar) genes.
     """
+    # flatten the yvar list to remove isoform grouping
+    fyvar = semnet.utils.flatten_list(yvar, 1)
+
     # Initialize Beta as all 0's
-    nyvar = len(yvar)
+    nyvar = len(fyvar)
     Beta = np.zeros((nyvar, nyvar))
 
     # Iterate through yvar and see if there are any relationships
     for colIndex, value in enumerate(yvar):
+        # If the current gene has a downstream target continue
         if paths[value]:
-            targets = paths[value]
+            # get isoform count
+            if hasattr(value, '__iter__'):
+                isoCnt = len(value)
+            else:
+                isoCnt = 1
+
+            # get flattened list of downstream targets
+            targets = semnet.utils.flatten_list(paths[value],1)
+
+            # Add ones to correct spot in Beta
             for target in targets:
-                rowIndex = yvar.index(target)
-                Beta[rowIndex, colIndex] = 1
+                rowIndex = fyvar.index(target)
+                Beta[rowIndex, colIndex:colIndex+isoCnt] = 1
     return Beta
 
 def buildGamma(yvar, xvar, paths):
     """ Gamma has 'yvar' rows and 'xvar' columns.  Gamma is a 0,1 matrix of the
     relationships between exogenous (xvar) to endogenous (yvar) genes.
     """
+
+    # flatten yvar and xvar to remove isoform grouping
+    fyvar = semnet.utils.flatten_list(yvar, 1)
+    fxvar = semnet.utils.flatten_list(xvar, 1)
+
     # Initialize Gamma as all 0's
-    nyvar = len(yvar)
-    nxvar = len(xvar)
+    nyvar = len(fyvar)
+    nxvar = len(fxvar)
     Gamma = np.zeros((nyvar, nxvar))
+
     # Iterate through xvar and see if there are any relationships
     for colIndex, value in enumerate(xvar):
-        try:
-            targets = paths[value]
+
+        # If the current gene has a downstream target continue
+        if paths[value]:
+            # get isoform count
+            if hasattr(value, '__iter__'):
+                isoCnt = len(value)
+            else:
+                isoCnt = 1
+
+            # get flattened list of downstream targets
+            targets = semnet.utils.flatten_list(paths[value],1)
+
+            # Add ones to correct spot in Gamma
             for target in targets:
-                rowIndex = yvar.index(target)
-                Gamma[rowIndex, colIndex] = 1
-        except:
-            pass
+                rowIndex = fyvar.index(target)
+                Gamma[rowIndex, colIndex:colIndex+isoCnt] = 1
     return Gamma
 
 def buildPhi(xvar, covs):
@@ -102,8 +138,12 @@ def buildPhi(xvar, covs):
     (xvar). So it is a square matrix where the number or rows and columns is
     equal to the number of xvars.
     """
+
+    # flatten yvar and xvar to remove isoform grouping
+    fxvar = semnet.utils.flatten_list(xvar, 1)
+
     # Initialize Phi as all 0's with 1's along the diagonal.
-    nxvar = len(xvar)
+    nxvar = len(fxvar)
     Phi = np.eye(nxvar)
 
     # Iterate through the covariance list. Find each genes in the pair is
@@ -112,7 +152,7 @@ def buildPhi(xvar, covs):
     for cov in covs:
         coord = []
         for gene in cov:
-            coord.append(xvar.index(gene))
+            coord.append(fxvar.index(gene))
 
         Phi[coord[0], coord[1]] = 1
         Phi[coord[1], coord[0]] = 1

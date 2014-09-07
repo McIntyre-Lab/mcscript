@@ -105,9 +105,9 @@ def add_newlinks_beta_to_gamma(path, args):
 
             # Skip when one gene is already regulating the other
             if path.beta[index, -1] == 0:
-                path.beta[-tCnt, index:index+isoCnt] = 1
+                path.beta[-tCnt:, index:index+isoCnt] = 1
                 createOutput(path, model_type, args)
-                path.beta[-tCnt, index:index+isoCnt] = 0
+                path.beta[-tCnt:, index:index+isoCnt] = 0
                 path.count_increment()
 
         # Initialize default values
@@ -146,9 +146,9 @@ def add_newlinks_gamma_to_gamma(path, args):
                 isoCnt = 1
 
             # Skip when one gene is already regulating the other
-            path.gamma[-tCnt, index:index+isoCnt] = 1
+            path.gamma[-tCnt:, index:index+isoCnt] = 1
             createOutput(path, model_type, args)
-            path.gamma[-tCnt, index:index+isoCnt] = 0
+            path.gamma[-tCnt:, index:index+isoCnt] = 0
             path.count_increment()
 
         # Initialize default values

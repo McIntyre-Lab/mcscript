@@ -110,28 +110,29 @@ class SemPath(object):
         else:
             isoCnt = 1
 
-        matRange = range(xInd, xInd+isoCnt)
+        # Matix index needs to include the number of isoforms
+        matInd = range(xInd, xInd+isoCnt)
 
-        # Pull a list of causative effects from gamma, we need to transfer
-        # these to the beta matrix. I am assuming that isoforms have same effects
-        effects = self.gamma[:,xInd]
+        for ind in matInd:
+            # Pull a list of causative effects from gamma, we need to transfer
+            # these to the beta matrix
+            effects = self.gamma[:,ind]
 
-        # Delete the corresponding col from gamma and row and col from phi
-        self.del_col_gamma(matRange)
-        self.del_row_col_phi(matRange)
+            # Delete the corresponding col from gamma and row and col from phi
+            self.del_col_gamma(ind)
+            self.del_row_col_phi(ind)
 
-        for cnt in matRange:
             # Add a row of zeros to the bottom of gamma
             self.expand_gamma()
 
             # Expand the beta matrix 
             self.expand_beta()
 
-        # Identify where the effects from gamma are equal to 1 and set those in
-        # beta
-        causeInd = np.where(np.array(effects) == 1)[0]
-        for ind2 in causeInd:
-            self.beta[ind2, -isoCnt:] = 1
+            # Identify where the effects from gamma are equal to 1 and set those in
+            # beta
+            causeInd = np.where(np.array(effects) == 1)[0]
+            for ind2 in causeInd:
+                self.beta[ind2, -1] = 1
 
         # Set row/col counts
         self.rc_count()
