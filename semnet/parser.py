@@ -1,6 +1,7 @@
 from collections import defaultdict
 import numpy as np
 import semnet
+from semnet import utils
 
 def rowSplitter(row, separator):
     """ Split the row of a path file based on a give separator. """
@@ -74,7 +75,7 @@ def buildBeta(yvar, paths):
     between endogenous (yvar) genes.
     """
     # flatten the yvar list to remove isoform grouping
-    fyvar = semnet.utils.flatten_list(yvar, 1)
+    fyvar = utils.flatten_list(yvar, 1)
 
     # Initialize Beta as all 0's
     nyvar = len(fyvar)
@@ -85,13 +86,10 @@ def buildBeta(yvar, paths):
         # If the current gene has a downstream target continue
         if paths[value]:
             # get isoform count
-            if hasattr(value, '__iter__'):
-                isoCnt = len(value)
-            else:
-                isoCnt = 1
+            isoCnt = utils.isoCount(value)
 
             # get flattened list of downstream targets
-            targets = semnet.utils.flatten_list(paths[value],1)
+            targets = utils.flatten_list(paths[value],1)
 
             # Add ones to correct spot in Beta
             for target in targets:
@@ -105,8 +103,8 @@ def buildGamma(yvar, xvar, paths):
     """
 
     # flatten yvar and xvar to remove isoform grouping
-    fyvar = semnet.utils.flatten_list(yvar, 1)
-    fxvar = semnet.utils.flatten_list(xvar, 1)
+    fyvar = utils.flatten_list(yvar, 1)
+    fxvar = utils.flatten_list(xvar, 1)
 
     # Initialize Gamma as all 0's
     nyvar = len(fyvar)
@@ -119,13 +117,10 @@ def buildGamma(yvar, xvar, paths):
         # If the current gene has a downstream target continue
         if paths[value]:
             # get isoform count
-            if hasattr(value, '__iter__'):
-                isoCnt = len(value)
-            else:
-                isoCnt = 1
+            isoCnt = utils.isoCount(value)
 
             # get flattened list of downstream targets
-            targets = semnet.utils.flatten_list(paths[value],1)
+            targets = utils.flatten_list(paths[value],1)
 
             # Add ones to correct spot in Gamma
             for target in targets:
@@ -140,7 +135,7 @@ def buildPhi(xvar, covs):
     """
 
     # flatten yvar and xvar to remove isoform grouping
-    fxvar = semnet.utils.flatten_list(xvar, 1)
+    fxvar = utils.flatten_list(xvar, 1)
 
     # Initialize Phi as all 0's with 1's along the diagonal.
     nxvar = len(fxvar)

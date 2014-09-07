@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+from semnet import utils
 
 class SemPath(object):
     """ A data storage class with everything you need to run a SEM. """
@@ -105,26 +106,24 @@ class SemPath(object):
         self.yvar.append(curr)
 
         # How many isoforms does this gene have 
-        if hasattr(gene,'__iter__'):
-            isoCnt = len(gene)
-        else:
-            isoCnt = 1
+        isoCnt = utils.isoCount(gene)
 
+        # Create a range of indices so that we can remove this gene from gamma
+        # and phi
         matRange = range(xInd, xInd+isoCnt)
 
         # Pull a list of causative effects from gamma, we need to transfer
-        # these to the beta matrix. I am assuming that isoforms have same effects
+        # these to the beta matrix. 
+        # NOTE: I am assuming that isoforms have same effects
         effects = self.gamma[:,xInd]
 
         # Delete the corresponding col from gamma and row and col from phi
         self.del_col_gamma(matRange)
         self.del_row_col_phi(matRange)
 
+        # Expand gamma and beta to account for new isoforms
         for cnt in matRange:
-            # Add a row of zeros to the bottom of gamma
             self.expand_gamma()
-
-            # Expand the beta matrix 
             self.expand_beta()
 
         # Identify where the effects from gamma are equal to 1 and set those in
@@ -146,11 +145,8 @@ class NewGene(object):
             # Determine if the gene we are adding to the model has multiple isoforms
             # and create a counter
             self.name = newGene
+            self.count = utils.isoCount(self.name)
 
-            if hasattr(self.name,'__iter__'):
-                self.count = len(self.name)
-            else:
-                self.count = 1
         except ValueError:
             logging.error("If you are adding genes you need to create a new gene object.")
 

@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 import numpy as np
 
+def isoCount (myVars):
+    if hasattr(myVars, '__iter__'):
+        cnt = len(myVars)
+    else:
+        cnt = 1
+    return cnt
+
 def flatten_list(myVars, return_list=0):
     """ Isoforms are being treated together as a group. To delineate them,
     isoforms are grouped together as tuples. For the calis statement, xvar and

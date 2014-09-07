@@ -11,197 +11,255 @@ from semnet import utils
 # Add genes downstream of nodes
 def add_genes_ds_beta(path, newgene, args):
     """ Iterate through beta matrix and place new genes downstream of each beta. """
-    model_type = "Adding Genes Downstream of Beta"
 
     # Initialize default values
     path.reinit()
-
-    # Expand beta to account for new isoforms
-    for iso in range(0, newgene.count):
-        path.expand_beta()
-
-    path.yvar.append(newgene.name)
-    # Iterate through BETA matrix and output all possible models
-    for i in range(0, path.bCol):
-        path.beta[path.bRow:, i] = 1
-        createOutput(path, model_type, args)
-        path.beta[path.bRow:, i] = 0
-        path.count_increment()
-
-def add_genes_ds_gamma(path, newgene, args):
-    """ Iterate through gamma matrix and place new genes downstream of each gamma. """
-    model_type = "Adding Genes Downstream of Gamma"
-
-    # Initialize default values
-    path.reinit()
-
-    # Expand gamma to account for new isoforms
-    for iso in range(0, newgene.count):
-        path.expand_gamma()
-
-    path.yvar.append(newgene.name)
-    # Iterate through GAMMA matrix and output all possible models
-    index = 0
-    for gene in path.xvar:
-        if hasattr(gene, '__iter__'):
-            xvarCount = len(gene)
-        else:
-            xvarCount = 1
-
-        start = index
-        end = start + xvarCount
-        index = end
-
-        path.gamma[path.bRow:, start:end] = 1
-        createOutput(path, model_type, args)
-        path.gamma[path.bRow:, start:end] = 0
-        path.count_increment()
-
-# Add genes upstream of nodes
-def add_genes_above_beta(path, newgene, args):
-    """ Iterate through gamma matrix and place new genes upstream of betas. """
-    model_type = "Adding Genes upstream of Beta"
-
-    # Initialize default values
-    path.reinit()
-    path.xvar.append(newgene.name)
-
-    index = 0
-    for gene in path.yvar:
-        # determine if gene has multiple isoforms
-        if hasattr(gene,'__iter__'):
-            yvarCount = len(gene)
-        else:
-            yvarCount = 1
-
-        yvarStart = index
-        yvarEnd = yvarStart + yvarCount
-        coords = (yvarStart, yvarEnd)
-        index = yvarEnd
-
-        # Initialize default values
-        path.reinit()
-
-        # Edit variable list
-        path.xvar.append(newgene.name)
-
-        # Expand matrices GAMMA and PHI matrices
-        for iso in range(0, newgene.count):
-            # Adding new exogenous genes
-            path.expand_gamma(axis=1)
-            path.expand_phi()
-
-        # Fill in 1's for GAMMA and PHI
-        _gRow, _gCol = np.shape(path.gamma)
-        path.gamma[yvarStart:yvarEnd, (_gCol - newgene.count):] = 1
-
-        _pRow, _pCol = np.shape(path.phi)
-        path.phi[(_pRow - newgene.count):, (_pCol - newgene.count):] = 1
-
-        # Build SAS output
-        createOutput(path, model_type, args)
-        path.count_increment()
-
-def add_genes_above_gamma(path, newgene, args):
-    """ Iterate through gamma matrix and place new genes upstream of gammas. """
-    model_type = "Adding Genes upstream of Gamma"
-
-    # Initialize default values
-    path.reinit()
-
-    _xvar = list(path.xvar)
-
-    for gene in _xvar:
-        # Initialize default values
-        path.reinit()
-
-        # Convert the current exogenous gene to an enogenous gene
-        path.convert_ExogToEndog(gene)
-
-        # determine if old exogenous gene has multiple isoforms
-        if hasattr(gene,'__iter__'):
-            isoCnt = len(gene)
-        else:
-            isoCnt = 1
-
-        # Add my new gene to the xvar list
-        path.xvar.append(newgene.name)
-
-        # Expand gamma and phi matrices for my new gene
-        for iso in range(0, newgene.count):
-            # Adding new exogenous genes
-            path.expand_gamma(axis=1)
-            path.expand_phi()
-
-        # Set the 1's in gamma matrix where new exogenous affects old exogenous
-        path.gamma[-isoCnt:, -newgene.count:] = 1
-
-        # Build SAS output
-        createOutput(path, model_type, args)
-        path.count_increment()
-
-# Add genes between connected nodes
-def add_genes_bt_beta(path, newgene, args):
-    """ Iterate through beta matrix and add genes between two betas. """
-    model_type = "Adding Genes between Betas"
-
-    # Initialize default values again
-    path.reinit()
-
-    # Add newGene to yvar because they are new endogenous genes
-    path.yvar.append(newgene.name)
-
-    # Expand beta to account for new isoforms
-    for iso in range(0, newgene.count):
-        path.expand_beta()
-
-    rows, cols = np.nonzero(path.beta)
-    for row, col in zip(rows, cols):
-        path.beta[row, col] = 0
-        path.beta[row, path.bCol:] = 1
-        path.beta[path.bRow:, col] = 1
-        createOutput(path, model_type, args)
-        path.beta[row, col] = 1
-        path.beta[row, path.bCol:] = 0
-        path.beta[path.bRow:, col] = 0
-        path.count_increment()
-
-def add_genes_bt_gamma_beta(path, newgene, args):
-    """ Iterate through gamma matrix and place new genes between gamma and ds beta. """
-    model_type = "Adding Genes between Gamma and Beta"
-
-    # Initialize default values again
-    path.reinit()
-
-    # Add newGene to yvar because they are new endogenous genes
-    path.yvar.append(newgene.name)
 
     # Expand gamma and beta to account for new isoforms
     for iso in range(0, newgene.count):
         path.expand_beta()
         path.expand_gamma()
 
+    # Make copy of oiriginal for iterating
+    _yvar = list(path.yvar)
+
+    # Append new gene to yvar
+    path.yvar.append(newgene.name)
+
+    # Iterate through BETA matrix and output all possible models
+    index = 0
+    for gene in _yvar:
+        # How many isoforms does the current gene have
+        isoCnt = utils.isoCount(gene)
+
+        # Create slice index of bottom 'newgene.count' rows of beta and
+        # alterating columns of beta
+        bSlice = np.s_[-newgene.count:, index:index+isoCnt]
+
+        model_type = "Adding Genes Downstream of Beta:\n {0} -> {1}".format(gene, newgene.name)
+
+        path.beta[bSlice] = 1
+        createOutput(path, model_type, args)
+        path.beta[bSlice] = 0
+        path.count_increment()
+        index += isoCnt
+
+def add_genes_ds_gamma(path, newgene, args):
+    """ Iterate through gamma matrix and place new genes downstream of each gamma. """
+
+    # Initialize default values
+    path.reinit()
+
+    # Expand gamma and beta to account for new isoforms
+    for iso in range(0, newgene.count):
+        path.expand_beta()
+        path.expand_gamma()
+
+    # Append new gene to yvar
+    path.yvar.append(newgene.name)
+
+    # Iterate through GAMMA matrix and output all possible models
+    index = 0
+    for gene in path.xvar:
+        # How many isoforms does the current gene have
+        isoCnt = utils.isoCount(gene)
+
+        # Create slice index of bottom 'newgene.count' rows of gamma and
+        # alternating columns of gamma
+        gSlice = np.s_[-newgene.count:, index:index+isoCnt]
+
+        model_type = "Adding Genes Downstream of Gamma:\n {0} -> {1}".format(gene, newgene.name)
+
+        path.gamma[gSlice] = 1
+        createOutput(path, model_type, args)
+        path.gamma[gSlice] = 0
+        path.count_increment()
+        index += isoCnt
+
+# Add genes upstream of nodes
+def add_genes_above_beta(path, newgene, args):
+    """ Iterate through gamma matrix and place new genes upstream of betas. """
+
+    # Initialize default values
+    path.reinit()
+
+    # Expand matrices GAMMA and PHI matrices
+    for iso in range(0, newgene.count):
+        path.expand_gamma(axis=1) # Add column not row
+        path.expand_phi()
+
+    # Append new gene to yvar
+    path.xvar.append(newgene.name)
+
+    index = 0
+    for gene in path.yvar:
+        # How many isoforms does the current gene have
+        isoCnt = utils.isoCount(gene)
+
+        # Create slice index of right most 'newgene.count' columns of gamma and
+        # alterating rows of gamma
+        gSlice = np.s_[index:index+isoCnt, -newgene.count:]
+
+        model_type = "Adding Genes Upstream of beta:\n {1} -> {0}".format(gene, newgene.name)
+
+        path.gamma[gSlice] = 1
+        createOutput(path, model_type, args)
+        path.gamma[gSlice] = 0
+        path.count_increment()
+        index += isoCnt
+
+def add_genes_above_gamma(path, newgene, args):
+    """ Iterate through gamma matrix and place new genes upstream of gammas. """
+
+    # Initialize default values
+    path.reinit()
+
+    # Make copy of oiriginal for iterating
+    _xvar = list(path.xvar)
+
+    for gene in _xvar:
+        # How many isoforms does the current gene have
+        isoCnt = utils.isoCount(gene)
+
+        # Convert the current exogenous gene to an enogenous gene
+        path.convert_ExogToEndog(gene)
+
+        # Append new gene to xvar
+        path.xvar.append(newgene.name)
+
+        # Expand gamma and phi matrices for my new gene
+        for iso in range(0, newgene.count):
+            path.expand_gamma(axis=1) # Add column not row
+            path.expand_phi()
+
+        # Create slice index of right most 'newgene.count' columns of gamma and
+        # the bottom 'isoCnt' rows of gamma.
+        gSlice = np.s_[-isoCnt:, -newgene.count:]
+
+        model_type = "Adding Genes Upstream of Gamma:\n {1} -> {0}".format(gene, newgene.name)
+
+        path.gamma[gSlice] = 1
+        createOutput(path, model_type, args)
+        path.count_increment()
+
+        # Reset I need to move different exogenous genes 
+        path.reinit()
+
+# Add genes between connected nodes
+def add_genes_bt_beta(path, newgene, args):
+    """ Iterate through beta matrix and add genes between two betas. """
+
+    # Initialize default values again
+    path.reinit()
+
+    # Expand gamma and beta to account for new isoforms
+    for iso in range(0, newgene.count):
+        path.expand_beta()
+        path.expand_gamma()
+
+    # Make copy of oiriginal for iterating
+    _yvar = list(path.yvar)
+
+    # Append new gene to yvar
+    path.yvar.append(newgene.name)
+
+    # Iterate through BETA matrix and add genes between betas
+    cIndex = 0
+    for col in _yvar:
+        # How many isoforms does the current column have
+        colCnt = utils.isoCount(col)
+
+        rIndex = 0
+        for row in _yvar:
+            # A gene cannot act on itself, so skip when row=col
+            if col == row:
+                continue
+
+            # How many isoforms does the current row have
+            rowCnt = utils.isoCount(row)
+
+            # Zero slice, is the current location in Beta, if there are 1s
+            # there I will turn them 0
+            zSlice = np.s_[rIndex:rIndex+rowCnt, cIndex:cIndex+colCnt]
+
+            # Target slice, is the bottom 'newgene.count' rows, that will get turned 1
+            # showing that current 'col' is acting on the newgene
+            tSlice = np.s_[-newgene.count:, cIndex:cIndex+colCnt]
+
+            # Source slice, is the right most 'newgene.count' cols, that will get turned 1
+            # showing that newgene is acting on the current row
+            sSlice = np.s_[rIndex:rIndex+rowCnt, -newgene.count:]
+
+            # If there was a previous interaction (i.e. 1) then make models
+            if np.all(path.beta[zSlice]):
+                model_type = "Adding Genes Between Betas:\n {0} -> {2} -> {1}".format(col, row, newgene.name)
+
+                path.beta[zSlice] = 0
+                path.beta[tSlice] = 1
+                path.beta[sSlice] = 1
+                createOutput(path, model_type, args)
+                path.beta[zSlice] = 1
+                path.beta[tSlice] = 0
+                path.beta[sSlice] = 0
+                path.count_increment()
+
+            rIndex += rowCnt
+        cIndex += colCnt
+
+def add_genes_bt_gamma_beta(path, newgene, args):
+    """ Iterate through gamma matrix and place new genes between gamma and ds beta. """
+
+    # Initialize default values again
+    path.reinit()
+
+    # Expand gamma and beta to account for new isoforms
+    for iso in range(0, newgene.count):
+        path.expand_beta()
+        path.expand_gamma()
+
+    # Make copy of oiriginal for iterating
+    _yvar = list(path.yvar)
+
+    # Add newGene to yvar because they are new endogenous genes
+    path.yvar.append(newgene.name)
+
     # Iterate through each row of GAMMA matrix and place new gene in between
     # gamma and beta
-    for row_index in range(0, path.gRow):
-        col_index = 0
-        path.beta[row_index, path.bCol:] = 1
-        for gene in path.xvar:
-            if hasattr(gene,'__iter__'):
-                xvarCount = len(gene)
-            else:
-                xvarCount = 1
-            start = col_index
-            end = col_index + xvarCount
-            col_index = end
+    cIndex = 0
+    for col in path.xvar:
+        # How many isoforms does the current column have
+        colCnt = utils.isoCount(col)
 
-            if np.all(path.gamma[row_index, start:end] == 1):
-                path.gamma[path.gRow:, start:end] = 1
-                path.gamma[row_index, start:end] = 0
+        rIndex = 0
+        for row in _yvar:
+            # How many isoforms does the current row have
+            rowCnt = utils.isoCount(row)
+
+            # Zero slice, is the current location in Gamma, if there are 1s
+            # there I will turn them 0
+            zSlice = np.s_[rIndex:rIndex+rowCnt, cIndex:cIndex+colCnt]
+
+            # Target slice, is the bottom 'newgene.count' rows in GAMMA, that
+            # will get turned 1 showing that current 'col' is acting on the
+            # newgene
+            tSlice = np.s_[-newgene.count:, cIndex:cIndex+colCnt]
+
+            # Source slice, is the right most 'newgene.count' cols in BETA,
+            # that will get turned 1 showing that newgene is acting on the
+            # current row
+            sSlice = np.s_[rIndex:rIndex+rowCnt, -newgene.count:]
+
+            # If there was a previous interaction (i.e. 1) then make models
+            if np.all(path.gamma[zSlice]):
+                model_type = "Adding Genes Between Gamma and Beta:\n {0} -> {2} -> {1}".format(col, row, newgene.name)
+
+                path.gamma[zSlice] = 0
+                path.gamma[tSlice] = 1
+                path.beta[sSlice] = 1
                 createOutput(path, model_type, args)
-                path.gamma[path.gRow:, start:end] = 0
-                path.gamma[row_index, start:end] = 1
+                path.gamma[zSlice] = 1
+                path.gamma[tSlice] = 0
+                path.beta[sSlice] = 0
                 path.count_increment()
-            else:
-                logging.debug("The gene: {0} does not act on {1}".format(gene,path.yvar[row_index]))
-        path.beta[row_index, path.bCol:] = 0
+            rIndex += rowCnt
+        cIndex += colCnt
