@@ -71,14 +71,11 @@ def buildBeta(yvar, paths):
 
     # Iterate through yvar and see if there are any relationships
     for colIndex, value in enumerate(yvar):
-        try:
+        if paths[value]:
             targets = paths[value]
             for target in targets:
                 rowIndex = yvar.index(target)
-
-            Beta[rowIndex, colIndex] = 1
-        except:
-            pass
+                Beta[rowIndex, colIndex] = 1
     return Beta
 
 def buildGamma(yvar, xvar, paths):
