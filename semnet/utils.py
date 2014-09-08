@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+import os.path
 
 def isoCount (myVars):
     if hasattr(myVars, '__iter__'):
@@ -26,3 +27,9 @@ def flatten_list(myVars, return_list=0):
         return result
     else:
         return(' '.join(result))
+
+def name_scrub(name):
+    """ Function to scrub path and extension from a file name """
+    cleanName = os.path.splitext(os.path.basename(name))[0]
+    return cleanName
+

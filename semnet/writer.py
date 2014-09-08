@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import logging
 from os.path import splitext
+import semnet
 from semnet.sas import CalisOut
 
 def output_model_to_log(path, model_type, count):
@@ -19,11 +20,14 @@ def createOutput(path, model_type, args):
         count = path.count
         model = path.count
 
+    # Remove path and extension information from mname
+    mname = semnet.utils.name_scrub(args.mname)
+
     # If the user supplied a template file then use it.
     if args.template:
-        calis = CalisOut(path, model_type, args.lname, args.mname, args.gname, args.template)
+        calis = CalisOut(path, model_type, args.lname, mname, args.gname, args.template)
     else:
-        calis = CalisOut(path, model_type, args.lname, args.mname, args.gname)
+        calis = CalisOut(path, model_type, args.lname, mname, args.gname)
 
     # Create a output sas file
     oname = "{0}_{1}.sas".format(splitext(args.oname)[0], model)
