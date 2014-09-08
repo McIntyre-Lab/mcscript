@@ -1,7 +1,7 @@
 import logging
 import sys
 
-def set_logger(fname=None,logLevel=info):
+def set_logger(fname=None,logLevel='info'):
     """ Function to set up the handle error logging.
     fname = the name of the log file, if no logfile is given then logging
             information will be pritned to stdout.
@@ -11,9 +11,9 @@ def set_logger(fname=None,logLevel=info):
 
     # Determine log level
     if logLevel == 'info':
-        _log = logging.INFO
+        _log = 'logging.INFO'
     elif logLevel == 'debug':
-        _log = logging.DEBUG
+        _log = 'logging.DEBUG'
 
     # Output to file or STDOUT
     if fname:
