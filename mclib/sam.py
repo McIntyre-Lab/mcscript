@@ -17,3 +17,9 @@ class Sam(object):
             pos.append(base.pos)
             count.append(base.n)
         return pos, count
+    
+    def get_read_count(self, chrom, start, end):
+        count = 0
+        for alnRead in self.sam.fetch(chrom, start, end):
+            count += 1
+        return count
