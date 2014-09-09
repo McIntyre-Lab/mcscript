@@ -74,8 +74,3 @@ class FlyGff(object):
         prime UTRs for a given transcript ID 
         """
         return (self._get_annotation(name, 'three_prime_UTR'), self._get_annotation(name, 'five_prime_UTR'))
-
-    def get_mirs(self):
-        """ Return a list of all miRNAs """
-        return [mir for mir in self.db.features_of_type('miRNA')]
-
