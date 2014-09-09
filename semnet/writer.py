@@ -25,9 +25,9 @@ def createOutput(path, model_type, args):
 
     # If the user supplied a template file then use it.
     if args.template:
-        calis = CalisOut(path, model_type, args.lname, mname, args.gname, args.template)
+        calis = CalisOut(path, model, args.lname, mname, args.gname, args.template)
     else:
-        calis = CalisOut(path, model_type, args.lname, mname, args.gname)
+        calis = CalisOut(path, model, args.lname, mname, args.gname)
 
     # Create a output sas file
     oname = "{0}_{1}.sas".format(splitext(args.oname)[0], model)
