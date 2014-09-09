@@ -9,15 +9,26 @@ class FlyGff(object):
         force = if True force the recreation of the database
         merge = passed to the merge_strategey option in gffutils.create_db()
         """
+        # Database name
+        if os.path.splitext(filename)[1] == '.gff':
+            dbname = filename + '.db'
+        else:
+            print "Please provide a gff file."
+            raise ValueError
 
         # Create or connect the GFF database
-        dbname = filename + '.db'
-        self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
+        if not force:
+            try:
+                self.db = gffutils.FeatureDB(dbname)
+            except:
+                self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
+        else:
+                self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
 
         # Create key to go from gene symbol to fbgn
         self.symbol2fbgn = {}
         for gene in self.db.features_of_type('gene'):
-            self.symbol2fbgn[gene['Name']] = gene.id
+            self.symbol2fbgn[gene['Name'][0]] = gene.id
 
     def _get_annotation(self, name, childtype=''):
         """ Method that returns a list of children given some parent """
@@ -26,12 +37,17 @@ class FlyGff(object):
         except:
             print "Sorry I could not find " + name + " in the database, are you sure it is there?"
 
-    def _get_coords(self, name, featuretype=''):
+    def get_coords(self, annotations, order_by='start'):
         """ Method that returns a list of coords for a given feature """
         """ Method to return a list of tuples with exon start and stops for a given transcript """
         coords = []
-        for row in self._get_annotation(name, ):
+        for row in annotations:
             coords.append((row.start, row.end))
+
+        if order_by == 'start':
+            coords.sort(key=lambda tup: tup[0])
+        elif order_by == 'end':
+            coords.sort(key=lambda tup: tup[1])
         return coords
 
     def get_transcripts(self, name):
@@ -41,50 +57,23 @@ class FlyGff(object):
             name = self.symbol2fbgn[name]
         return self._get_annotation(name, 'mRNA')
 
-    def get_exons(self, name, withCoords=False):
+    def get_exons(self, name):
         """ Method that returns a list of exons for a given transcript ID """
-        if not withCoords:
-            return self._get_annotation(name, 'exon')
-        else:
-            exons = self._get_annotation(name, 'exon')
-            coords = self._get_coords(name, 'exon')
-            return exons, coords
+        return self._get_annotation(name, 'exon')
 
-    def get_introns(self, name, withCoords=False):
+    def get_introns(self, name):
         """ Method that returns a list of introns for a given transcript ID """
-        if not withCoords:
-            return self._get_annotation(name, 'intron')
-        else:
-            introns = self._get_annotation(name, 'intron')
-            coords = self._get_coords(name, 'intron')
-            return introns, coords
+        return self._get_annotation(name, 'intron')
 
-    def get_cds(self, name, withCoords=False):
+    def get_cds(self, name):
         """ Method that returns a list of CDS for a given transcript ID """
-        if not withCoords:
-            return self._get_annotation(name, 'CDS')
-        else:
-            cds = self._get_annotation(name, 'CDS')
-            coords = self._get_coords(name, 'CDS')
-            return cds, coords
+        return self._get_annotation(name, 'CDS')
 
-    def get_three_prime_utr(self, name, withCoords=False):
-        """ Method that returns a list of three prime UTRs for a given transcript ID """
-        if not withCoords:
-            return self._get_annotation(name, 'three_prime_UTR')
-        else:
-            utr = self._get_annotation(name, 'three_prime_UTR')
-            coords = self._get_coords(name, 'three_prime_UTR')
-            return utr, coords
-
-    def get_five_prime_utr(self, name, withCoords=False):
-        """ Method that returns a list of five prime UTRs for a given transcript ID """
-        if not withCoords:
-            return self._get_annotation(name, 'five_prime_UTR')
-        else:
-            utr = self._get_annotation(name, 'five_prime_UTR')
-            coords = self._get_coords(name, 'five_prime_UTR')
-            return utr, coords
+    def get_utrs(self, name):
+        """ Method that returns a list of three prime UTRs and a list of five
+        prime UTRs for a given transcript ID 
+        """
+        return (self._get_annotation(name, 'three_prime_UTR'), self._get_annotation(name, 'five_prime_UTR'))
 
     def get_mirs(self):
         """ Return a list of all miRNAs """
