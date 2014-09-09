@@ -23,7 +23,7 @@ data SEM.gene_${gene}_model_${model};
     set fitstat;
     where IndexCode = 312;
     gene = "$gene";
-    model = "Model $model";
+    model = "Model_${model}";
     rename FitValue = BIC;
     keep gene model FitValue;
     run;
