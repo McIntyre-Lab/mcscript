@@ -11,9 +11,9 @@ def set_logger(fname=None,logLevel='info'):
 
     # Determine log level
     if logLevel == 'info':
-        _log = 'logging.INFO'
+        _log = logging.INFO
     elif logLevel == 'debug':
-        _log = 'logging.DEBUG'
+        _log = logging.DEBUG
 
     # Output to file or STDOUT
     if fname:
