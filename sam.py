@@ -1,7 +1,7 @@
 import pysam
 import os.path
 
-class Sam(object):
+class Bam(object):
     def __init__(self, filename):
 
         if not os.path.exists(filename + '.bai'):
