@@ -34,7 +34,7 @@ class _Anno(object):
         else:
                 self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
 
-        # Create a gernal feature key
+        # Create a general feature key
         self._featureKey = { 'mRNA': 'mRNA',
                             'exon': 'exon',
                             'intron': 'intron',
@@ -139,19 +139,34 @@ class _Gene(object):
     """
     def __init__(self, geneName='', gffObject=None):
         self.gene = geneName
-        self.db = gffObject
+
+        # Get gene information 
+        if self.gene in gffObject.symbol2fbgn:
+            self.id = gffObject.symbol2fbgn[self.gene]
+        else:
+            self.id = self.gene
+
+        try:
+            self.start = gffObject.db[self.id].start
+            self.end = gffObject.db[self.id].end
+            self.strand = gffObject.db[self.id].strand
+        except:
+            pass
 
         # Pull list of transcripts for that gene
-        self._transOb = self.db.get_transcripts(self.gene)
+        self._transOb = gffObject.get_transcripts(self.gene)
         self.transCnt = len(self._transOb)
 
         # Create dictionary where key is transcript id and values are
         # annotations for that transcript
         self.transcript = defaultdict(dict)
         for ts in self._transOb:
-            self.transcript[ts.id]['exons'] = [(exon.start, exon.end) for exon in self.db.get_exons(ts)]
-            self.transcript[ts.id]['cds'] = [(cds.start, cds.end) for cds in self.db.get_cds(ts)]
-            self.transcript[ts.id]['utr'] = [self.db.get_coords(utr) for utr in self.db.get_utrs(ts)]
+            self.transcript[ts.id]['exons'] = [(exon.start, exon.end) for exon in gffObject.get_exons(ts)]
+            self.transcript[ts.id]['introns'] = [(intron.start, intron.end) for intron in gffObject.get_introns(ts)]
+            self.transcript[ts.id]['cds'] = [(cds.start, cds.end) for cds in gffObject.get_cds(ts)]
+            self.transcript[ts.id]['utr'] = [gffObject.get_coords(utr) for utr in gffObject.get_utrs(ts)]
+            self.transcript[ts.id]['tsStart'] = ts.start
+            self.transcript[ts.id]['tsEnd'] = ts.end
 
 class FlyGene(_Gene):
     """ A class to build a complete gene object with transcript and exon
@@ -173,8 +188,8 @@ class FlyGene(_Gene):
     """
     def __init__(self, geneName='', gffObject=None):
         # If a gene symbol was given look up the FBgn
-        if geneName in self.gffObject.symbol2fbgn:
-            name = self.gffObject.symbol2fbgn[geneName]
+        if geneName in gffObject.symbol2fbgn:
+            name = gffObject.symbol2fbgn[geneName]
         else:
             name = geneName
 
