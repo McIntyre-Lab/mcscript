@@ -147,11 +147,16 @@ class _Gene(object):
             self.id = self.gene
 
         try:
+            self.chrom = gffObject.db[self.id].chrom
             self.start = gffObject.db[self.id].start
             self.end = gffObject.db[self.id].end
             self.strand = gffObject.db[self.id].strand
         except:
-            pass
+            print """There is something wrong creating your gene. Please check
+            and make sure the geneName you used is in your gffDB. If this does
+            not fix the problem, check that your gffDB is formated correctly.
+            """
+            raise ValueError
 
         # Pull list of transcripts for that gene
         self._transOb = gffObject.get_transcripts(self.gene)
