@@ -1,5 +1,5 @@
 import os.path
-import collections
+from collections import defaultdict
 
 import numpy as np
 import pysam
@@ -27,13 +27,13 @@ class Bam(object):
         
         # Import BAM and pull pileups for a gene
         self.bam = pysam.Samfile(filename, 'rb')
-        self.pileups = self._get_pile_dict(chrom, start, end)
+        self.pileups = self.get_pile_dict(chrom, start, end)
 
         # If needed calculate the normaliztion fudge factor
         if fudgeFactor:
             self.fudgeFactor = self._calc_base_level_fudgeFactor()
 
-    def _get_pile_dict(self, chrom, start, end):
+    def get_pile_dict(self, chrom, start, end):
         """ Create a dictionary where key is pos and value is count """
         pileups = self.bam.pileup(chrom, start, end)
         pileDict = {}
@@ -66,15 +66,6 @@ class Bam(object):
         ff = float(normFactor) / float(base_count)
         return ff
     
-    def get_pile(self, chrom, start, end):
-        """ Create two lists first with positions and second with counts """
-        pileups = self.bam.pileup(chrom, start, end)
-        count = []
-        for base in pileups:
-            pos.append(base.pos)
-            count.append(base.n)
-        return pos, count
-    
     def get_gene_read_count(self, chrom, start, end):
         """ Get the number of reads that aligned to a particular regions """
         count = 0
@@ -86,9 +77,10 @@ def sum_pileups(bamList):
     """ Given a list of pileup dictionaries, create a new dictionary that is
     the sum accross positions 
     """
-    combinedDict = collections.Counter()
+    combinedDict = defaultdict(int)
     for bam in bamList:
-        combinedDict.update(bam.pileups)
+        for pos in bam.pileups:
+            combinedDict[pos] += bam.pileups[pos]
     return combinedDict
 
 def avg_pileups(bamList, fudgeFactor=False):
