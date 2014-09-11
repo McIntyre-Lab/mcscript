@@ -30,12 +30,8 @@ def getOptions():
     parser.add_argument("-g", dest="geneName", action='store', required=True, help="Name of the gene you want to make wiggles of. [Required]")
     parser.add_argument("-o", dest="oname", action='store', required=True, help="Name of the output PNG. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
-
-    #args = parser.parse_args()
-    args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', 
-                              '--bam','/mnt/storage/cegs_aln/bam_fb551_genome_nodup/r101_V1.sorted.bam','/mnt/storage/cegs_aln/bam_fb551_genome_nodup/r101_V2.sorted.bam',
-                              '-g', 'InR',
-                              '-o', '/home/jfear/tmp/inr.png'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', '--bam','/mnt/storage/cegs_aln/bam_fb551_genome_nodup/r101_V1.sorted.bam','/mnt/storage/cegs_aln/bam_fb551_genome_nodup/r101_V2.sorted.bam', '-g', 'InR', '-o', '/home/jfear/tmp/inr.png'])
     return(args)
 
 if __name__ == '__main__':
