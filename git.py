@@ -15,7 +15,10 @@ def get_git():
 
 def git_to_log():
     """ Write current git commit information to the log. """
-    git_status, gitdir = get_git()
-    logging.info("Starting %s", __file__) 
-    logging.info("Running script from  %s", gitdir) 
-    logging.info("Git commit id: %s", git_status)
+    try:
+        git_status, gitdir = get_git()
+        logging.info("Starting %s", __file__) 
+        logging.info("Running script from  %s", gitdir) 
+        logging.info("Git commit id: %s", git_status)
+    except:
+        pass
