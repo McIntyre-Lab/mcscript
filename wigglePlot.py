@@ -17,6 +17,12 @@ from mclib import bam as mcbam
 from mclib import gff as mcgff
 from mclib import wiggle as mcwiggle
 
+# TODO: Add option to take coordinates instead of just a gene
+# TODO: Make it so you can give a BED file instead of just a GFF
+# TODO: Add ability to make overlapping wiggle when up to XX groups are given
+# TODO: Add option to provide a FudgeFactor for correction
+# Minor TODO: For flies, add the ability to give it a fusion file and plot the fusions with labels
+
 def getOptions():
     """ Function to pull in arguments """
     description = """ This script constructs wiggle plots and gene models.
@@ -42,6 +48,7 @@ if __name__ == '__main__':
     # Output git commit version to log, if user has access
     mclib.git.git_to_log()
 
+    ################################################################################
     # GENE ANNOTATION 
 
     ## Import GFF database
