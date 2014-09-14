@@ -3,14 +3,16 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to McIntyre Python Scripts's documentation!
+McIntyre Python Scripts's documentation.
 ===================================================
+This is basic documentation of the McIntyre Lab python scripts.
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   mclib
 
 
 Indices and tables
