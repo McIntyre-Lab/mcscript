@@ -8,5 +8,5 @@ Bam Files
 ---------
 This is a basic class for dealing with bam files.
 .. automodule:: mclib.bam
-    :members:
+   :members:
 
