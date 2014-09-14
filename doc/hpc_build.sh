@@ -16,4 +16,4 @@ rm -r $TARGET/*
 sphinx-build -E -b html $SOURCE $TARGET
 
 # Fix Permission
-chmod -R a+r $TARGET
+chmod -R 775 $TARGET
