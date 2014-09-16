@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # Turn on logging
     mclib.logger.set_logger(args.log)
     # Output git commit version to log, if user has access
-    mclib.git.git_to_log()
+    mclib.git.git_to_log(__file__)
 
     ################################################################################
     # GENE ANNOTATION 
