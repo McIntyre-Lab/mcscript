@@ -10,7 +10,7 @@ def get_git():
     # get full path to script
     fullname = os.path.abspath(__file__)
     gitdir = os.path.dirname(fullname)
-    label = subprocess.check_output(["git", "--git-dir="+gitdir+"/../.git", "--work-tree="+gitdir,"rev-parse","HEAD"])
+    label = subprocess.check_output(["git", "log", "-n1", "--pretty=%h", fullname])
     return(label.rstrip(), gitdir)
 
 def git_to_log():
