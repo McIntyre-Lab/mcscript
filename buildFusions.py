@@ -26,7 +26,7 @@ def getOptions():
     parser.add_argument("-o", dest="oname", action='store', required=True, help="Name of the output PNG. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
     args = parser.parse_args()
-    #args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '-o', '/home/jfear/Desktop/fb551.bed'])
+    #args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '--sd', '-o', '/home/jfear/Desktop/fb551_sd.bed'])
     return(args)
 
 def writeOutput(chrom, fusions, strand, sfx, OUT):
