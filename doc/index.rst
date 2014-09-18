@@ -10,8 +10,9 @@ This is basic documentation of the McIntyre Lab python scripts.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
+   install
    mclib
 
 
