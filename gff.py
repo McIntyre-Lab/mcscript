@@ -167,7 +167,7 @@ class _Anno(object):
                 # start and stop.
                 current_merged_start = feature.start
                 current_merged_stop = feature.stop
-                flagMerge = 1
+                flagMerge = 0
 
         # need to yield the last one.
         if len(features) == 1:
