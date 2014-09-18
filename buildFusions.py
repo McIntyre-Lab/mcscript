@@ -47,9 +47,9 @@ def writeOutput(chrom, fusions, strand, sfx, OUT):
     # Attach the global counter
     global cnt
 
-    for fusion in enumerate(fusions):
+    for fusion in fusions:
         # Name the Fusion based on if it is a singleton or fusion.
-        if fusion['flagMerge']:
+        if fusion['merged']:
             # singleton
             name = "S{0}{1}".format(cnt, sfx)
         else:
