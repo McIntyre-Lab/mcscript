@@ -8,7 +8,6 @@ import sys
 
 # Add-on packages
 import numpy as np
-import gffutils
 
 # McLab Packages
 import mclib
@@ -23,12 +22,55 @@ def getOptions():
 
     parser = argparse.ArgumentParser(description=description, formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument("--gff", dest="gffName", action='store', required=True, help="Name with PATH, to a GFF file. Note if the GFFutils database has not been created it will be, this could take around 30min [Required]")
-    parser.add_argument("--sd", dest='strand', action='store_false', required=False, help="Flag if you want to make strand dependent fusions [Optional]")
+    parser.add_argument("--sd", dest='strand', action='store_true', required=False, help="Flag if you want to make strand dependent fusions. The default is to make strand independent fusions [Optional]")
     parser.add_argument("-o", dest="oname", action='store', required=True, help="Name of the output PNG. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
     #args = parser.parse_args()
-    args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '-o', '/home/jfear/tmp/inr.bed'])
+    args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '-o', '/home/jfear/Desktop/fb551.bed'])
     return(args)
+
+def name_fusions(chrom, exonList, fusionList, strand, sfx, OUT):
+    """ This functions names the fusions and writes their output. If a fusion
+    is made from a single exon then it is a singleton and will be prefixed with
+    the letter 'S'. If a fusion is made up of overlapping fusions then it is
+    prefixed with a 'F'.
+
+    Arguments:
+    chrom (str) = the current chromosome id
+    exonList (list) = a list of exons to be merged
+    fusionList (list) = a list of merged exons
+    strand (str) = the strand to output; {'-', '+'} for SD and {'.'} for SI fusions
+    sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
+    OUT (obj) = File output object
+    """
+
+    # Attach the global counter
+    global cnt
+
+    # I need to figure out if a fusion is from a single exon or multiple
+    # overlapping exons. To do this I am creating two lists of start and end
+    # coordinates. If a fusion matches an element in the exon list, then it is
+    # a singleton, otherwise it is a fusion.
+    exonTup = [(i.start, i.end) for i in exonList]   # Make a list of (start, ends) for exons
+    fusTup = [(i.start, i.end) for i in fusionList]  # Make a list of (start, ends) for fusion
+
+    for index, fusion in enumerate(fusTup):
+        # Name the Fusion based on if it is a singleton or fusion.
+        if fusion in exonTup:
+            # singleton
+            name = "S{0}{1}".format(cnt, sfx)
+        else:
+            # fusion
+            name = "F{0}{1}".format(cnt, sfx)
+
+        # Write output in a bed format 
+        start = str(fusion[0] - 1)      #remember bed is a 0-based format and gff is 1-based
+        end = str(fusion[1])
+        myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
+        OUT.write(myOut)
+
+        # increment fusion counter
+        cnt +=1
 
 if __name__ == '__main__':
     args = getOptions()
@@ -43,61 +85,43 @@ if __name__ == '__main__':
     ################################################################################
 
     # Connect to the database
+    logging.info('connecting to the gff file')
     flyGff = mcgff.FlyGff(args.gffName)
 
     # Connect to output file
     OUT = open(args.oname, 'w')
 
-    # Initilize Counter
+    # Initialize Counter
     cnt = 1
-
-    # Initilize Suffix
-    if args.strand:
-        sfx = '_SI'
-    else:
-        sfx = '_SD'
 
     ################################################################################
     # Build Fusions
     ################################################################################
 
-    # Get list of all genes in the genome
-    genes = flyGff.get_genes()
+    # Get list of chromosomes
+    chromosomes = flyGff.get_chrom()
 
-    # Iterate over genes in the genome
-    for gene in genes:
-        # What strand is the current gene on 
-        strand = gene.strand
+    for chrom in chromosomes:
+        if args.strand:
+            # Create Strand dependent fusions
+            for currStrand in ('-', '+'):
+                # Get list of all genes in the genome
+                logging.info('Pulling list of exons for chromosome: {0} on strand {1}'.format(chrom.id,currStrand))
+                exons = list(flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end),strand = currStrand))
 
-        # Pull a list of exons for the current gene
-        exons = flyGff.get_exons(gene)
+                # Create a list of fusions by merging overlapping exons
+                logging.info('Merging overlapping exons on strand '+currStrand)
+                fusions = list(flyGff.db.merge(exons, ignore_strand=False))
+                name_fusions(chrom.id, exons, fusions, currStrand, '_SD', OUT)
+        else:
+            # Create Strand independent fusions
+            # Get list of all genes in the genome
+            logging.info('Pulling list of exons for chromosome: '+chrom.id)
+            exons = list(flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end)))
 
-        # Create a list of fusions by merging overlapping exons
-        fusions = list(flyGff.db.merge(exons, ignore_strand = args.strand))
-
-        # I need to figure out fusions are from a single exon 'singleton' and
-        # which are multiple overlapping exons 'fusion'. Create a list of
-        # coordinates for both exons and fusions. Fusion coordinate is in the
-        # exons list then it is a singleton.
-        exonTup = [(i.chrom, i.start, i.end) for i in exons]   # Make a list of (chrom, start, ends) for exons
-        fusTup = [(i.chrom, i.start, i.end) for i in fusions]  # Make a list of (chrom, start, ends) for fusion
-
-        for fusion in fusTup:
-            if fusion in exonTup:
-                # singleton
-                name = "S{0}{1}".format(cnt, sfx)
-            else:
-                # fusion
-                name = "F{0}{1}".format(cnt, sfx)
-
-            # Write output in a bed format 
-            chrom = str(fusion[0])
-            start = str(fusion[1]) - 1      #remember bed is a 0-based format and gff is 1-based
-            end = str(fusion[2])
-            myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
-            OUT.write(myOut)
-
-            # increment fusion counter
-            cnt +=1
+            # Create a list of fusions by merging overlapping exons
+            logging.info('Merging overlapping exons')
+            fusions = list(flyGff.db.merge(exons, ignore_strand=True))
+            name_fusions(chrom.id, exons, fusions, '.' , '_SI', OUT)
 
     OUT.close()
