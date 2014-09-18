@@ -126,6 +126,11 @@ class FlyGff(_Anno):
             name = self.symbol2fbgn[name]
         return self._get_annotation(name, self._featureKey['mRNA'])
 
+    def get_chrom(self):
+        """ Return a generator of a list of genes """
+        return self.db.features_of_type(['chromosome','chromosome_arm'])
+
+
 class _Gene(object):
     """ A general class to build a complete gene object with transcript and
     exon information.
