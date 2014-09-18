@@ -1,6 +1,7 @@
-import gffutils
 import os.path
 from collections import defaultdict
+import logging
+import gffutils
 
 class _Anno(object):
     """ General class for handling annotation database created from GFFUtils 
@@ -30,9 +31,11 @@ class _Anno(object):
             try:
                 self.db = gffutils.FeatureDB(dbname)
             except:
+                logging.info('Building the GFF database')
                 self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
         else:
-                self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
+            logging.info('Forcing the re-building the GFF database')
+            self.db = gffutils.create_db(filename, dbname, force=force, merge_strategy=merge)
 
         # Create a general feature key
         self._featureKey = { 'mRNA': 'mRNA',
