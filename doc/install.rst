@@ -12,9 +12,9 @@ Installation Instructions
 	
 		In your text editor, add the following text:
 					
-			**host hpcgit**
-				**hostname git.hpc.ufl.edu**
-				**user mcintyre**
+			host hpcgit
+				hostname git.hpc.ufl.edu
+				user mcintyre
 
 	Make sure that you use 'mcintyre' as the user, we all use the same user name. Save and exit the file.
 
@@ -28,15 +28,15 @@ Installation Instructions
 		``> vi .profile``
 			In your text editor, add the following text:
 					
-				**export PATH=$PATH:$HOME/devel/python.git**
-				**export PYTHONPATH=$PYTHONPATH:$HOME/devel/python.git**
+				export PATH=$PATH:$HOME/devel/python.git
+				export PYTHONPATH=$PYTHONPATH:$HOME/devel/python.git
 					
 	
 5. To set this up on the HPC: First login and stay in the home directory. Edit the .bash_profile file.
 		``> vi .bash_profile``
 			In your text editor, add the following text:
 					
-				**export PATH=$PATH:$HOME/bin:/scratch/lfs/mcintyre/python.git**
-				**export PYTHONPATH=$PYTHONPATH:/scratch/lfs/mcintyre/python.git**
+				export PATH=$PATH:$HOME/bin:/scratch/lfs/mcintyre/python.git
+				export PYTHONPATH=$PYTHONPATH:/scratch/lfs/mcintyre/python.git
 					
 		
