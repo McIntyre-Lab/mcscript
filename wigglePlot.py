@@ -70,7 +70,7 @@ if __name__ == '__main__':
     pileups = []
     for bam in args.bamList:
         currBam = mcbam.Bam(bam)
-        pileups.append(currBam.get_pile_dict(myGene.chrom, myGene.start, myGene.end))
+        pileups.append(currBam.get_pileup(myGene.chrom, myGene.start, myGene.end))
 
     # Average Pileups together
     avgPileup = mcbam.avg_pileups(pileups, fudgeFactor=args.ff)

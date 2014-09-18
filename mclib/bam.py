@@ -24,7 +24,7 @@ class Bam(object):
         # Import BAM and pull pileups for a gene
         self.bam = pysam.Samfile(filename, 'rb')
 
-    def get_pile_dict(self, chrom, start, end):
+    def get_pileup(self, chrom, start, end):
         """ Create a dictionary where key is pos and value is count.
 
         Arguments:
