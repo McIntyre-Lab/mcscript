@@ -51,6 +51,7 @@ if __name__ == '__main__':
 
     ################################################################################
     # GENE ANNOTATION 
+    ################################################################################
 
     ## Import GFF database
     myGffDb = mcgff.FlyGff(args.gffName)
@@ -63,17 +64,20 @@ if __name__ == '__main__':
 
     ################################################################################
     # GENE COVERAGE
+    ################################################################################
 
     # Pull in bam file and make gene pileup
-    bList = []
+    pileups = []
     for bam in args.bamList:
-        bList.append(mcbam.Bam(bam, myGene.chrom, myGene.start, myGene.end, fudgeFactor=args.ff))
+        currBam = mcbam.Bam(bam)
+        pileups.append(currBam.get_pile_dict(myGene.chrom, myGene.start, myGene.end))
 
     # Average Pileups together
-    avgPileup = mcbam.avg_pileups(bList, fudgeFactor=args.ff)
+    avgPileup = mcbam.avg_pileups(pileups, fudgeFactor=args.ff)
     
     ################################################################################
     # MAKE WIGGLES
+    ################################################################################
 
     mcwiggle.plot_wiggle(avgPileup, myModel, args.oname)
 
