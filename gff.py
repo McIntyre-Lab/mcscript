@@ -49,6 +49,10 @@ class _Anno(object):
         except:
             print "Sorry I could not find " + name + " in the database, are you sure it is there?"
 
+    def get_genes(self):
+        """ Return a generator of a list of genes """
+        return self.db.features_of_type('gene')
+
     def get_transcripts(self, name):
         """ Method that returns a list of transcripts for a given gene. """
         return self._get_annotation(name, self._featureKey['mRNA'])
