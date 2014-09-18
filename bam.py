@@ -5,43 +5,63 @@ import numpy as np
 import pysam
 
 class Bam(object):
-    """ Basic wrapper for pysam module, to allow the quick pulling of pileups
-    for a certain region 
-    """
-    def __init__(self, filename, chrom, start, end, fudgeFactor=False):
-        """ Arguments:
+    def __init__(self, filename):
+        """ Basic wrapper for pysam module, to allow the quick pulling of pileups
+        for a certain region 
+
+        Arguments:
+        ----------
         filename = The full path to a sorted BAM file
-        chrom = The gene of interests chromosome
-        start = The gene of interests start location
-        end = The gene of interests end location
 
         Attributes:
+        -----------
         bam = a pysam Samfile object
-        pileups = dictionary of pileups where key is position and value is count
-        fudgeFactor = a fudgeFactor related to RPKM that can be used to normalize base counts
         """
-
         # If there is not BAM index make it
         if not os.path.exists(filename + '.bai'):
             pysam.index(filename)
         
         # Import BAM and pull pileups for a gene
         self.bam = pysam.Samfile(filename, 'rb')
-        self.pileups = self.get_pile_dict(chrom, start, end)
-
-        # If needed calculate the normaliztion fudge factor
-        if fudgeFactor:
-            self.fudgeFactor = self._calc_base_level_fudgeFactor()
 
     def get_pile_dict(self, chrom, start, end):
-        """ Create a dictionary where key is pos and value is count """
+        """ Create a dictionary where key is pos and value is count.
+
+        Arguments:
+        ----------
+        chrom (str) = chromosome name.
+        start (int) = start location
+        end (int) = end location
+
+        Returns:
+        --------
+        A dictionary where the key is the base position and the value is the
+        base count.
+        """
         pileups = self.bam.pileup(chrom, start, end)
         pileDict = {}
         for base in pileups:
             pileDict[base.pos]= base.n
         return pileDict
 
-    def _calc_base_level_fudgeFactor(self, normFactor=10**9):
+    def get_gene_read_count(self, chrom, start, end):
+        """ Get the number of reads that aligned to a particular regions.
+        Arguments:
+        ----------
+        chrom (str) = chromosome name.
+        start (int) = start location
+        end (int) = end location
+
+        Returns:
+        --------
+        An (int) with the number of reads overlapping the region.
+        """
+        count = 0
+        for alnRead in self.bam.fetch(chrom, start, end):
+            count += 1
+        return count
+
+    def calc_base_level_fudgeFactor(self, normFactor=10**9):
         """ When comparing wiggle accross treatments, it is necessary to
         normalize reads. If you look at 
         
@@ -53,9 +73,12 @@ class Bam(object):
             (2) Remove the exon length
 
         Arguments:
+        ----------
         normFactor = this is related to the 10^9 factor from RPKM
 
-        Returns a global fudge factor
+        Returns:
+        --------
+        A float with the global fudge factor 10^9 / sum(per base coverage)
         """
         base_count = 0
         for read in self.bam.fetch():
@@ -66,35 +89,40 @@ class Bam(object):
         ff = float(normFactor) / float(base_count)
         return ff
     
-    def get_gene_read_count(self, chrom, start, end):
-        """ Get the number of reads that aligned to a particular regions """
-        count = 0
-        for alnRead in self.bam.fetch(chrom, start, end):
-            count += 1
-        return count
+def sum_pileups(pileups):
+    """ Sum a list of pileup dictionaries
 
-def sum_pileups(bamList):
-    """ Given a list of pileup dictionaries, create a new dictionary that is
-    the sum accross positions 
+    Arguments:
+    ----------
+    pileups (list) = List of pileup dictionaries
+
+    Returns:
+    --------
+    A new dcitionary containing the sum for each base
     """
     combinedDict = defaultdict(int)
-    for bam in bamList:
-        for pos in bam.pileups:
-            combinedDict[pos] += bam.pileups[pos]
+    for pileup in pileups:
+        for pos in pileup:
+            combinedDict[pos] += pileup[pos]
     return combinedDict
 
-def avg_pileups(bamList, fudgeFactor=False):
-    """ Given a list of pileup dictionaries, create a new dictionary that is
-    the sum accross positions 
+def avg_pileups(pileups, fudgeFactor=False):
+    """ Average a list of pileup dictionaries
+
     Arguments:
-    pileupList (list) = a list containing mclib.bam.Bam objects
+    ----------
+    pileups (list) = List of pileup dictionaries
     fudgeFactor (bool) = do you want normalization or not
+
+    Returns:
+    --------
+    A new dcitionary containing the average coverage for each base
     """
-    num = len(bamList)
+    num = len(pileups)
 
     if fudgeFactor:
         # Calculate the average fudge factor
-        fList = [bam.fudgeFactor for bam in bamList]
+        fList = [pileup.calc_base_level_fudgeFactor() for pileup in pileups]
         ff = np.mean(np.array(fList))
 
     combinedDict = sum_pileups(bamList)
