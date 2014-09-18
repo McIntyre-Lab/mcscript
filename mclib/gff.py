@@ -90,6 +90,101 @@ class _Anno(object):
             coords.sort(key=lambda tup: tup[1])
         return coords
 
+    def merge(self, features, ignore_strand=False):
+        """ Merge overlapping features together.
+        Based on gffutils merge method.
+
+        Arguments
+        ----------
+        features : iterator of Feature instances
+
+        ignore_strand (bool) = If True, features on multiple strands will be
+        merged, and the final strand will be set to '.'.  Otherwise, ValueError
+        will be raised if trying to merge features on differnt strands.
+        """
+
+        # Consume iterator up front...
+        features = list(features)
+
+        if len(features) == 0:
+            raise StopIteration
+
+        # Either set all strands to '+' or check for strand-consistency.
+        if ignore_strand:
+            strand = '.'
+        else:
+            strands = [i.strand for i in features]
+            if len(set(strands)) > 1:
+                raise ValueError('Specify ignore_strand=True to force merging '
+                                 'of multiple strands')
+            strand = strands[0]
+
+        # Sanity check to make sure all features are from the same chromosome.
+        chroms = [i.chrom for i in features]
+        if len(set(chroms)) > 1:
+            raise NotImplementedError('Merging multiple chromosomes not '
+                                      'implemented')
+        chrom = chroms[0]
+
+        # To start, we create a merged feature of just the first feature.
+        current_merged_start = features[0].start
+        current_merged_stop = features[0].stop
+
+        # Set up a counter to determine if a feature was merged
+        flagMerge = 0
+
+        # We don't need to check the first one, so start at feature #2.
+        for feature in features[1:]:
+            # Does this feature start within the currently merged feature?...
+            if feature.start <= current_merged_stop + 1:
+                flagMerge = 1
+                # ...It starts within, so leave current_merged_start where it
+                # is.  Does it extend any farther?
+                if feature.stop >= current_merged_stop:
+                    # Extends further, so set a new stop position
+                    current_merged_stop = feature.stop
+                else:
+                    # If feature.stop < current_merged_stop, it's completely
+                    # within the previous feature.  Nothing more to do.
+                    continue
+            else:
+                # The start position is outside the merged feature, so we're
+                # done with the current merged feature.  Prepare for output...
+                merged_feature = dict(
+                    seqid=feature.chrom,
+                    source='.',
+                    featuretype=feature.featuretype,
+                    start=current_merged_start,
+                    end=current_merged_stop,
+                    score='.',
+                    strand=strand,
+                    frame='.',
+                    attributes='',
+                    merged=flagMerge)
+                yield merged_feature
+
+                # and we start a new one, initializing with this feature's
+                # start and stop.
+                current_merged_start = feature.start
+                current_merged_stop = feature.stop
+                flagMerge = 1
+
+        # need to yield the last one.
+        if len(features) == 1:
+            feature = features[0]
+        merged_feature = dict(
+            seqid=feature.chrom,
+            source='.',
+            featuretype=feature.featuretype,
+            start=current_merged_start,
+            end=current_merged_stop,
+            score='.',
+            strand=strand,
+            frame='.',
+            attributes='',
+            merged=flagMerge)
+        yield merged_feature
+
 class FlyGff(_Anno):
     """ Flybase specific class for handling an annotation database created from
     GFFUtils using a FlyBase GFF file. 
@@ -129,7 +224,6 @@ class FlyGff(_Anno):
     def get_chrom(self):
         """ Return a generator of a list of genes """
         return self.db.features_of_type(['chromosome','chromosome_arm'])
-
 
 class _Gene(object):
     """ A general class to build a complete gene object with transcript and

@@ -29,7 +29,7 @@ def getOptions():
     #args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '-o', '/home/jfear/Desktop/fb551.bed'])
     return(args)
 
-def name_fusions(chrom, exonList, fusionList, strand, sfx, OUT):
+def writeOutput(chrom, fusions, strand, sfx, OUT):
     """ This functions names the fusions and writes their output. If a fusion
     is made from a single exon then it is a singleton and will be prefixed with
     the letter 'S'. If a fusion is made up of overlapping fusions then it is
@@ -47,16 +47,9 @@ def name_fusions(chrom, exonList, fusionList, strand, sfx, OUT):
     # Attach the global counter
     global cnt
 
-    # I need to figure out if a fusion is from a single exon or multiple
-    # overlapping exons. To do this I am creating two lists of start and end
-    # coordinates. If a fusion matches an element in the exon list, then it is
-    # a singleton, otherwise it is a fusion.
-    exonTup = [(i.start, i.end) for i in exonList]   # Make a list of (start, ends) for exons
-    fusTup = [(i.start, i.end) for i in fusionList]  # Make a list of (start, ends) for fusion
-
-    for index, fusion in enumerate(fusTup):
+    for fusion in enumerate(fusions):
         # Name the Fusion based on if it is a singleton or fusion.
-        if fusion in exonTup:
+        if fusion['flagMerge']:
             # singleton
             name = "S{0}{1}".format(cnt, sfx)
         else:
@@ -64,8 +57,8 @@ def name_fusions(chrom, exonList, fusionList, strand, sfx, OUT):
             name = "F{0}{1}".format(cnt, sfx)
 
         # Write output in a bed format 
-        start = str(fusion[0] - 1)      #remember bed is a 0-based format and gff is 1-based
-        end = str(fusion[1])
+        start = str(fusion['start'] - 1)      #remember bed is a 0-based format and gff is 1-based
+        end = str(fusion['end'])
         myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
         OUT.write(myOut)
 
@@ -111,8 +104,8 @@ if __name__ == '__main__':
 
                 # Create a list of fusions by merging overlapping exons
                 logging.info('Merging overlapping exons on strand '+currStrand)
-                fusions = list(flyGff.db.merge(exons, ignore_strand=False))
-                name_fusions(chrom.id, exons, fusions, currStrand, '_SD', OUT)
+                fusions = list(flyGff.merge(exons, ignore_strand=False))
+                writeOutput(chrom.id, fusions, currStrand, '_SD', OUT)
         else:
             # Create Strand independent fusions
             # Get list of all genes in the genome
@@ -121,7 +114,7 @@ if __name__ == '__main__':
 
             # Create a list of fusions by merging overlapping exons
             logging.info('Merging overlapping exons')
-            fusions = list(flyGff.db.merge(exons, ignore_strand=True))
-            name_fusions(chrom.id, exons, fusions, '.' , '_SI', OUT)
+            fusions = list(flyGff.merge(exons, ignore_strand=True))
+            writeOutput(chrom.id, fusions, '.' , '_SI', OUT)
 
     OUT.close()
