@@ -37,8 +37,7 @@ def writeOutput(chrom, fusions, strand, sfx, OUT):
 
     Arguments:
     chrom (str) = the current chromosome id
-    exonList (list) = a list of exons to be merged
-    fusionList (list) = a list of merged exons
+    fusions (list) = a list of merged exons
     strand (str) = the strand to output; {'-', '+'} for SD and {'.'} for SI fusions
     sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
     OUT (obj) = File output object
