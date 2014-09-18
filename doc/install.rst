@@ -27,6 +27,7 @@ Installation Instructions
 
 4. Go back to your home directory. Now you will edit the .profile file. 
         ``> vi .profile``
+
         In your text editor, add the following text:
 					
             export PATH=$PATH:$HOME/devel/python.git
@@ -35,6 +36,7 @@ Installation Instructions
 	
 5. To set this up on the HPC: First login and stay in the home directory. Edit the .bash_profile file.
         ``> vi .bash_profile``
+     
         In your text editor, add the following text:
 					
             export PATH=$PATH:$HOME/bin:/scratch/lfs/mcintyre/python.git
