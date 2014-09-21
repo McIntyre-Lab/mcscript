@@ -89,7 +89,7 @@ class GeneModel(object):
             start += step
         return yList
 
-def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionModel=None, variantPos=None):
+def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionModel=None, variantPos=None, title=None):
     """ Function to construct a wiggle plot with gene models
     Arguments:
     pileDict (dict) = where keys are genome coordinates and values are counts at that position
@@ -97,14 +97,15 @@ def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionMode
     geneModel (obj) = a mclib/wiggle.py GeneModel object
     fusionModel (obj) = 
     variantPos (List) = a list of positions that have a variant of interest
+    title (str) = a title for the plot
     """
 
     # Set up the figure
     fig = plt.figure(figsize=(20, 10))
 
+    # Create multiple rows for each subplot
     if geneModel and variantPos and fusionModel:
         gs = gridspec.GridSpec(4, 1, height_ratios=[1, .08, 1, .5])
-
         ax1 = plt.subplot(gs[0])
         vax = plt.subplot(gs[1], sharex=ax1)
         gax = plt.subplot(gs[2], sharex=ax1)
@@ -112,58 +113,55 @@ def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionMode
 
     elif geneModel and variantPos:
         gs = gridspec.GridSpec(3, 1, height_ratios=[1, .08, 1])
-
         ax1 = plt.subplot(gs[0])
         vax = plt.subplot(gs[1], sharex=ax1)
         gax = plt.subplot(gs[2], sharex=ax1)
 
     elif geneModel and fusionModel:
         gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, .5])
-
         ax1 = plt.subplot(gs[0])
-        gax = plt.subplot(gs[1])
-        fax = plt.subplot(gs[2])
-
-    elif geneModel:
-        gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1])
-
-        ax1 = plt.subplot(gs[0])
-        gax = plt.subplot(gs[1])
+        gax = plt.subplot(gs[1], sharex=ax1)
+        fax = plt.subplot(gs[2], sharex=ax1)
 
     elif variantPos and fusionModel:
         gs = gridspec.GridSpec(3, 1, height_ratios=[1, .08,.5])
-
         ax1 = plt.subplot(gs[0])
-        vax = plt.subplot(gs[1])
-        fax = plt.subplot(gs[2])
+        vax = plt.subplot(gs[1], sharex=ax1)
+        fax = plt.subplot(gs[2], sharex=ax1)
+
+    elif geneModel:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1])
+        ax1 = plt.subplot(gs[0])
+        gax = plt.subplot(gs[1], sharex=ax1)
 
     elif variantPos:
         gs = gridspec.GridSpec(2, 1, height_ratios=[1, .08])
-
         ax1 = plt.subplot(gs[0])
-        vax = plt.subplot(gs[1])
+        vax = plt.subplot(gs[1], sharex=ax1)
 
     elif fusionModel:
         gs = gridspec.GridSpec(2, 1, height_ratios=[1,.5])
-
         ax1 = plt.subplot(gs[0])
-        fax = plt.subplot(gs[1])
+        fax = plt.subplot(gs[1], sharex=ax1)
 
+    else:
+        ax1 = plt.subplot(111)
 
-    # Set up the subplots
-    ## ax1 will be the wiggle
+    # Make wiggle plot
+    ## ax1 is the wiggle
     ax1.set_ylim(0, max(pileDict.values())+150)
     ax1.set_xlim(start-300, end+300)
-
-    # Create the wiggle plot
     n, bins, patches = ax1.hist(pileDict.keys(), bins=len(pileDict.keys()), weights=pileDict.values())
 
     if variantPos:
+        # Plot variants
         logging.debug('Creating variant plot')
+        ## vax will be the variant subplot
         vax.scatter(variantPos, [0.5]*len(variantPos), marker="^")
         vax.axis('off')  # Hide y-axis on gene model plot
 
     if geneModel:
+        # Plot gene models
         logging.debug('Creating geneModel plot')
         ## gax will be the gene model subplot
         gax.set_ylim(max(geneModel.yLoc)+3, min(geneModel.yLoc)-3)
@@ -174,6 +172,7 @@ def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionMode
         gax.add_collection(p)
 
     if fusionModel:
+        # Plot gene models
         logging.debug('Creating fusion plot')
         ## fax will be the fusion model subplot
         fax.set_ylim(min(geneModel.yLoc), max(geneModel.yLoc)+5)
@@ -184,5 +183,6 @@ def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionMode
         fax.add_collection(p)
 
     # Save output
+    fig.suptitle(title, fontsize=20, fontweight='bold')
     plt.show()
     fig.savefig(outName)
