@@ -1,9 +1,11 @@
 import os
+import logging
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from matplotlib.collections import PatchCollection
+from matplotlib import gridspec
 
 class GeneModel(object):
     """ Class to construct a gene model """
@@ -87,35 +89,99 @@ class GeneModel(object):
             start += step
         return yList
 
-def plot_wiggle(pileDict, geneModel, outName):
+def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionModel=None, variantPos=None):
     """ Function to construct a wiggle plot with gene models
     Arguments:
     pileDict (dict) = where keys are genome coordinates and values are counts at that position
-    geneModel (obj) = a mclib/wiggle.py GeneModel object
     outName (str) = name of the output png
+    geneModel (obj) = a mclib/wiggle.py GeneModel object
+    fusionModel (obj) = 
+    variantPos (List) = a list of positions that have a variant of interest
     """
 
     # Set up the figure
     fig = plt.figure(figsize=(20, 10))
 
-    # Set up the two subplots
-    ## ax1 will be the wiggle
-    ax1 = fig.add_subplot(211)
-    ax1.set_ylim(0, max(pileDict.values())+100)    # NOTE: set ylim equal to 0, max
-    ax1.set_xlim(geneModel.xLoc[0]-300, geneModel.xLoc[1]+300) # NOTE: set xlim equal to start-300, end-300
+    if geneModel and variantPos and fusionModel:
+        gs = gridspec.GridSpec(4, 1, height_ratios=[1, .08, 1, .5])
 
-    ## ax2 will be the gene model
-    ax2 = fig.add_subplot(212, sharex=ax1)
-    ax2.set_ylim(min(geneModel.yLoc), max(geneModel.yLoc)+5)
-    ax2.get_yaxis().set_visible(False)  # Hide y-axis on gene model plot
-    ax2.get_xaxis().set_visible(False)  # Hide y-axis on gene model plot
+        ax1 = plt.subplot(gs[0])
+        vax = plt.subplot(gs[1], sharex=ax1)
+        gax = plt.subplot(gs[2], sharex=ax1)
+        fax = plt.subplot(gs[3], sharex=ax1)
+
+    elif geneModel and variantPos:
+        gs = gridspec.GridSpec(3, 1, height_ratios=[1, .08, 1])
+
+        ax1 = plt.subplot(gs[0])
+        vax = plt.subplot(gs[1], sharex=ax1)
+        gax = plt.subplot(gs[2], sharex=ax1)
+
+    elif geneModel and fusionModel:
+        gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, .5])
+
+        ax1 = plt.subplot(gs[0])
+        gax = plt.subplot(gs[1])
+        fax = plt.subplot(gs[2])
+
+    elif geneModel:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1])
+
+        ax1 = plt.subplot(gs[0])
+        gax = plt.subplot(gs[1])
+
+    elif variantPos and fusionModel:
+        gs = gridspec.GridSpec(3, 1, height_ratios=[1, .08,.5])
+
+        ax1 = plt.subplot(gs[0])
+        vax = plt.subplot(gs[1])
+        fax = plt.subplot(gs[2])
+
+    elif variantPos:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[1, .08])
+
+        ax1 = plt.subplot(gs[0])
+        vax = plt.subplot(gs[1])
+
+    elif fusionModel:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[1,.5])
+
+        ax1 = plt.subplot(gs[0])
+        fax = plt.subplot(gs[1])
+
+
+    # Set up the subplots
+    ## ax1 will be the wiggle
+    ax1.set_ylim(0, max(pileDict.values())+150)
+    ax1.set_xlim(start-300, end+300)
 
     # Create the wiggle plot
     n, bins, patches = ax1.hist(pileDict.keys(), bins=len(pileDict.keys()), weights=pileDict.values())
 
-    # Put the gene models together and create their plots
-    p = PatchCollection(geneModel.patches, match_original=True)
-    ax2.add_collection(p)
+    if variantPos:
+        logging.debug('Creating variant plot')
+        vax.scatter(variantPos, [0.5]*len(variantPos), marker="^")
+        vax.axis('off')  # Hide y-axis on gene model plot
+
+    if geneModel:
+        logging.debug('Creating geneModel plot')
+        ## gax will be the gene model subplot
+        gax.set_ylim(max(geneModel.yLoc)+3, min(geneModel.yLoc)-3)
+        gax.axis('off')  # Hide y-axis on gene model plot
+
+        # Put the gene models together and create their plots
+        p = PatchCollection(geneModel.patches, match_original=True)
+        gax.add_collection(p)
+
+    if fusionModel:
+        logging.debug('Creating fusion plot')
+        ## fax will be the fusion model subplot
+        fax.set_ylim(min(geneModel.yLoc), max(geneModel.yLoc)+5)
+        gax.axis('off')  # Hide y-axis on gene model plot
+
+        # Put the fusion models together and create their plots
+        p = PatchCollection(fusionModel.patches, match_original=True)
+        fax.add_collection(p)
 
     # Save output
     plt.show()
