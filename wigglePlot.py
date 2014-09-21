@@ -33,7 +33,7 @@ def getOptions():
 
     group1 = parser.add_argument_group('Data Types', 'The following types of data are capable of being handled.')
     group1.add_argument("--bam", nargs='*', dest="bamList", action='store', required=True, help="Name with PATH to sorted BAM file. If multiple files are given they will be averaged. [Required]")
-    group1.add_argument("--gff", dest="gffName", action='store', required=True, help="Name with PATH to a GFF file. Note if a GFFutils database has not been created it will be, this could take around 30min [Required]")
+    group1.add_argument("--gff", dest="gffName", action='store', required=False, help="Name with PATH to a GFF file. Note if a GFFutils database has not been created it will be, this could take around 30min [Optional]")
     #group1.add_argument("--bed", dest="bedName", action='store', required=False, help="Name with PATH to a bed file [Optional].") # TODO: Add bed functionality
     group1.add_argument("--vcf", dest="vcfName", action='store', required=False, help="Name with PATH to a vcf file zipped using bgzip. [Optional]")
     #group1.add_argument("--fusions", dest="fusName", action='store', required=False, help="Name with PATH to a bed file contianing the genome coordinates to fusion name [Optional].") # TODO: Add fusion functionality
