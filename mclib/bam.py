@@ -125,7 +125,7 @@ def avg_pileups(pileups, fudgeFactor=False):
         fList = [pileup.calc_base_level_fudgeFactor() for pileup in pileups]
         ff = np.mean(np.array(fList))
 
-    combinedDict = sum_pileups(bamList)
+    combinedDict = sum_pileups(pileups)
 
     for pos in combinedDict:
         try:
