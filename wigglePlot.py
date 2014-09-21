@@ -155,5 +155,4 @@ if __name__ == '__main__':
     # MAKE WIGGLES
     ################################################################################
 
-    mcwiggle.plot_wiggle(avgPileup, args.oname, chrom, start, end, geneModel=geneModel, fusionModel=fusionModel, variantPos=variantPos)
-
+    mcwiggle.plot_wiggle(avgPileup, args.oname, chrom, start, end, geneModel=geneModel, fusionModel=fusionModel, variantPos=variantPos, title=args.sample)
