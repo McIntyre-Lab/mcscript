@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Standard Libraries
 import argparse 
 import collections
 import itertools
@@ -6,7 +7,12 @@ import operator
 import re
 import os.path
 import logging
+
+# AddOn Libraries
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
+
+# McLab Libraries
+import mclib
 
 def getOptions():
     """ Function to pull in arguments """
@@ -15,27 +21,11 @@ def getOptions():
     parser.add_argument("-r2", dest="r2", action='store', required=False, help="Name of read 2 FASTQ file. If SE leave blank.")
     parser.add_argument("--outdir", dest="odir", action='store', required=True, help="Directory to store FASTQ output files [Required]")
     parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Path and name of the summary table of read counts in csv format [Required]")
-    parser.add_argument("-t", "--table", dest="tname", action='store', required=True, help="Path and name of the table showing each sequence and the number of reads with that sequence in tsv format [Required]")
+    parser.add_argument("-t", "--table", dest="tname", action='store', required=False, help="Path and name of the table showing each sequence and the number of reads with that sequence in tsv format [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Path and name of log file") 
     args = parser.parse_args()
     #args = parser.parse_args(['-r1', '/home/jfear/tmp/fq/r1.fq', '-r2', '/home/jfear/tmp/fq/r2.fq', '--outdir', '/home/jfear/tmp/files', '-o', '/home/jfear/tmp/files/counts.csv', '-t', '/home/jfear/tmp/files/cnts_table.tsv', '-g', '/home/jfear/tmp/files/test.log'])
     return(args)
-
-def setLogger(fname,loglevel):
-    """ Function to handle error logging """
-    logging.basicConfig(filename=fname, level=loglevel, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
-
-def getGit():
-    """ This function will parse the current Git commit version. This will
-    allow recording of exactly which script was used to create a given
-    output."""
-    import subprocess
-    # get full path to script
-    fullname = os.path.abspath(__file__)
-    gitdir = os.path.dirname(fullname)
-    label = subprocess.check_output(["git", "--git-dir="+gitdir+"/.git", "--work-tree="+gitdir,"rev-parse","HEAD"])
-    return(label.rstrip(), gitdir)
-
 
 def getName(odir, fname):
     """ This function creates unique and duplicate dataset names. """
@@ -55,7 +45,7 @@ def getNameUnpaired(odir, fname1, fname2):
     updist = os.path.join(odir, name1 + '_' + name2 + '_unpaired_distinct.fq')
     return(upuniq, updup, updist)
 
-def readFq(fname,hdict):
+def readFq(fname, hdict):
     """ Function to read a FQ file, I used the FastqGeneralIterator for its
     speeds since I don't need a full SeqIO object. """
     with open(fname, 'r') as FQ:
@@ -86,19 +76,19 @@ def silentRemove(filename):
     except:
         pass
 
-def buildOutSE(hdict,vlist):
+def buildOutSE(hdict, vlist):
     myout = ''
     for value in vlist:
         myout += '\n'.join(str(x) for x in ['@' + value, hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
     return(myout)
 
-def buildDistinctOutSE(hdict,vlist):
+def buildDistinctOutSE(hdict, vlist):
     myout = ''
     for value in vlist:
         myout += '\n'.join(str(x) for x in ['@' + value, hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
         return(myout)
 
-def writeOutputSE(hdict,sdict,uname,duname,diname,oname,tname):
+def writeOutputSE(hdict, sdict, uname, duname, diname, oname, tname):
     UNIQ = open(uname[0], 'w')
     DUPS = open(duname[0], 'w')
     DIST = open(diname[0], 'w')
@@ -149,12 +139,13 @@ def writeOutputSE(hdict,sdict,uname,duname,diname,oname,tname):
     counts = dict()
     for item in sdict:
         counts[item] = len(sdict[item])
-    with open(tname, 'w') as OT:
-        sorted_counts = sorted(counts.iteritems(), key=operator.itemgetter(1), reverse=True)
-        for item in sorted_counts:
-            OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
+    if tname:
+        with open(tname, 'w') as OT:
+            sorted_counts = sorted(counts.iteritems(), key=operator.itemgetter(1), reverse=True)
+            for item in sorted_counts:
+                OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
 
-def buildOutPE(hdict,vlist):
+def buildOutPE(hdict, vlist):
     myout1 = ''
     myout2 = ''
     upout = ''
@@ -167,7 +158,7 @@ def buildOutPE(hdict,vlist):
 
     return(myout1, myout2, upout)
 
-def buildDistinctOutPE(hdict,vlist):
+def buildDistinctOutPE(hdict, vlist):
     myout1 = ''
     myout2 = ''
     upout = ''
@@ -179,7 +170,7 @@ def buildDistinctOutPE(hdict,vlist):
             upout += '\n'.join(str(x) for x in ['@' + value , hdict[value][0][0],'+', hdict[value][0][1]]) + '\n'
         return(myout1, myout2, upout)
 
-def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tname):
+def writeOutputPE(hdict, sdict, uname, duname, diname, upuniq, updup, updist, oname, tname):
     UNIQ1 = open(uname[0], 'w')
     DUPS1 = open(duname[0], 'w')
     DIST1 = open(diname[0], 'w')
@@ -262,11 +253,12 @@ def writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,oname,tnam
     counts = dict()
     for item in sdict:
         counts[item] = len(sdict[item])
-    with open(tname, 'w') as OT:
-        sorted_counts = sorted(counts.iteritems(), key=operator.itemgetter(1), reverse=True)
-        for item in sorted_counts:
-            OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
 
+    if tname:
+        with open(tname, 'w') as OT:
+            sorted_counts = sorted(counts.iteritems(), key=operator.itemgetter(1), reverse=True)
+            for item in sorted_counts:
+                OT.write(str(item[1]) + '\t' + str(item[0]).strip() + "\n")
 
 def main(args):
     """ MAIN Function to execute everything """
@@ -300,27 +292,19 @@ def main(args):
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
         sdict = idDups(hdict)
-        writeOutputPE(hdict,sdict,uname,duname,diname,upuniq,updup,updist,args.oname,args.tname)
+        writeOutputPE(hdict, sdict, uname, duname, diname, upuniq, updup, updist, args.oname, args.tname)
     else:
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
         sdict = idDups(hdict)
-        writeOutputSE(hdict,sdict,uname,duname,diname,args.oname,args.tname)
-
+        writeOutputSE(hdict, sdict, uname, duname, diname, args.oname, args.tname)
 
 if __name__=='__main__':
     # Turn on Logging if option -g was given
     args = getOptions()
-    if args.log:
-        setLogger(args.log,logging.INFO)
-    else:
-        setLogger(os.devnull,logging.INFO)
 
-    # Get Git information and start log
-    git_status, gitdir = getGit()
-    logging.info("Starting %s", __file__) 
-    logging.info("Running script from  %s", gitdir) 
-    logging.info("Git commit id: %s", git_status)
+    mclib.logger.set_logger(args.log)
+    mclib.git.git_to_log(__file__)
 
     # Run Main part of the script
     main(args)
