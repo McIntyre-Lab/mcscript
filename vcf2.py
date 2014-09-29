@@ -15,7 +15,7 @@ class Vcf(object):
             logging.warn('Input file needs to be compressed by bgzip')
             logging.info('I will try to run bgzip now')
 
-            bgz = filename+'.bgz'
+            bgz = filename+'.gz'
             with open(bgz, 'w') as FH:
                 p = subprocess.call(['bgzip', '-c', filename], stdout=FH) 
 
