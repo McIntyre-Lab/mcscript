@@ -78,7 +78,7 @@ class BedRow:
         
     def _split_col(self, cols, index):
         try:
-            cols[index] = (cols[index].split(','))
+            cols[index] = tuple(int(x) for x in cols[index].split(','))
         except:
             pass
 
