@@ -93,6 +93,14 @@ class BedRow:
         except:
             print "Your bed file did not have this column."
 
+    def __setitem__(self, item, value):
+        if type(item) in [int, long]:
+            self._contents[item] = value
+        try:
+            self._contents[self._parent._keys2index[item]] = value
+        except:
+            print "Your bed file did not have this column."
+
     def get_coords(self):
         return (self['chromStart'], self['chromEnd'])
 

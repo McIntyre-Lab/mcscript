@@ -17,21 +17,22 @@ from Bio.SeqRecord import SeqRecord
 # McLab Packages
 import mclib
 from mclib import vcf2 as mcvcf
+from mclib import bed as mcbed
 
 def getOptions():
     """ Function to pull in arguments """
-
     description = """ This script updates FASTA files. """
-
     parser = argparse.ArgumentParser(description=description, formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument("--vcf", dest="vcfName", action='store', required=True, help="Name with PATH to a vcf file zipped using bgzip. [Required]")
     parser.add_argument("--fasta", dest="fastaName", action='store', required=True, help="Name with PATH to a fasta file. [Required]")
+    parser.add_argument("--mask", dest="mask", action='store_true', required=False, help="Select if you just want to mask output with an 'N'. [Optional]")
+    parser.add_argument("--bed", dest="bed", action='store', required=False, help="Name and PATH to a bed file containing fusions locations. [Optional]")
     parser.add_argument("-o", dest="oname", action='store', required=True, help="Name with PATH of the output FASTA. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
-
     #args = parser.parse_args()
-    args = parser.parse_args(['--vcf', '/home/jfear/tmp/indels/r101.vcf', '--fasta','/home/jfear/storage/useful_dmel_data/dmel-all-chromosome-r5.57.fasta', '-o', '/home/jfear/tmp/indel.fasta', '--debug'])
+    args = parser.parse_args(['--vcf', '/home/jfear/tmp/indels/r101.vcf', '--fasta','/home/jfear/storage/useful_dmel_data/dmel-all-chromosome-r5.57.fasta', '-o', '/home/jfear/tmp/indel.fasta', '--bed', '/home/jfear/storage/useful_dmel_data/dmel_si_fusions_r5.57.bed', '--debug'])
+    #args = parser.parse_args(['--vcf', '/home/jfear/tmp/test.vcf', '--fasta','/home/jfear/tmp/test.fasta', '-o', '/home/jfear/tmp/indel.fasta', '--debug'])
     return(args)
 
 def buildVariantDict(myVcf):
@@ -87,32 +88,79 @@ def adjustVarCoords(varList):
 def updateSeq(Seq, varList):
     """ Update the sequence given a list of variants """
     # Create a mutable sequence
-    mut = MutableSeq(Seq.seq, IUPAC.ambiguous_dna())
-    for index, value in enumerate(varList):
-        start, end, ref, alt, diff = value
+    mut = Seq.seq.tomutable()
+    for var in varList:
+        start, end, ref, alt, diff = var
         if diff == 0:
             if mut[start] == ref:
-                print mut[start-1:start+10]
-                mut[start] = alt
-                print mut[start-1:start+10]
+                if args.mask:
+                    mut[start] = 'N'
+                else:
+                    mut[start] = alt
             else:
                 logging.error('coordinates appear to be off for a SNP')
+                logging.debug('Seq ref: {0}, VCF ref: {1}, Pos: {2}'.format(mut[start], ref, start))
                 raise ValueError
         elif diff > 0:
             if mut[start] == ref:
-                print mut[start-1:start+10]
-                mut[start] = alt
-                print mut[start-1:start+10]
+                cnt = start + 1
+                for base in alt[1:]:
+                    mut.insert(cnt, base)
+                    cnt += 1
             else:
                 logging.error('coordinates appear to be off for a Insertion')
+                logging.debug('Seq ref: {0}, VCF ref: {1}, Pos: {2}'.format(mut[start], ref, start))
                 raise ValueError
         elif diff < 0:
             if mut[start:start + len(ref)] == ref:
                 mut[start:start + len(ref)] = alt
             else:
                 logging.error('coordinates appear to be off for a deletion')
+                logging.debug('Seq ref: {0}, VCF ref: {1}, Pos: {2}'.format(mut[start:start + len(ref)], ref, start))
                 raise ValueError
+    Seq.seq = mut.toseq()
 
+def getVariants(chrom, start, end, variants, varIndex):
+    origVarIndex = []
+    for pos in xrange(start, end+1):
+        try:
+            origVarIndex.append(varIndex[chrom][pos])
+        except:
+            pass
+    if origVarIndex:
+        newPos = []
+        for index in origVarIndex:
+            start = variants[chrom][index][0]
+            end = variants[chrom][index][1]
+            newPos + [start, end]
+        newStart = min(newPos)
+        newEnd = max(newPos)
+    else:
+        newStart = start
+        newEnd = end
+    return newStart, newEnd
+
+def sliceAndDiceSeq(bedRow, seqRecord):
+    fusID = bedRow['name']
+    fusSeq = seqRecord[bedRow['chromStart']:bedRow['chromEnd']].seq
+    fusRecord = SeqRecord(fusSeq, id=fusID, description='')
+    return fusID, fusRecord
+
+def updateBedAndSlice(Bed, variants, varIndex, mySeq):
+    bedReader = mcbed.Bed(Bed)
+    updateSeq = dict()
+    for row in bedReader.get_all_rows():
+        chrom = row['chrom']
+        start = row['chromStart']
+        end = row['chromEnd']
+        newStart, newEnd = getVariants(chrom, start, end, variants, varIndex)
+        if start != newStart:
+            logging.debug('Original Coords: {0}, New Coords: {1}'.format((start, end), (newStart, newEnd)))
+        row['chromStart'] = newStart
+        row['chromEnd'] = newEnd
+        fusID, fusRecord = sliceAndDiceSeq(row, mySeq[chrom])
+        updateSeq[fusID] = fusRecord
+    return updateSeq
 
 if __name__ == '__main__':
     args = getOptions()
@@ -129,32 +177,33 @@ if __name__ == '__main__':
     ################################################################################
     # Import VCF information
     ################################################################################
+    logging.info('Importing VCF information')
     myVcf = mcvcf.Vcf(args.vcfName)
     variants, varIndex = buildVariantDict(myVcf)
-    adjustVarCoords(variants)
-
 
     ################################################################################
     # Import FASTA
     ################################################################################
-    mySeq = SeqIO.to_dict(SeqIO.parse(open(fastaName, 'r'), 'fasta'))
+    logging.info('Importing FASTA')
+    mySeq = SeqIO.to_dict(SeqIO.parse(open(args.fastaName, 'r'), 'fasta'))
 
     ################################################################################
-    chrom = '2L'
-    vname = '/home/jfear/tmp/indels/r101.vcf.gz'
-    myVcf = mcvcf.Vcf(vname)
-    variants, varIndex = buildVariantDict(myVcf)
-    bob = variants[chrom][0:10]
-    adjustVarCoords(bob)
-    fname ='/home/jfear/storage/useful_dmel_data/dmel-all-chromosome-r5.57.fasta'
-    mySeq = SeqIO.to_dict(SeqIO.parse(open(fname, 'r'), 'fasta'))
-    updateSeq(mySeq[chrom], bob)
+    # Iterte through the chromosomes and update the genome
+    ################################################################################
+    logging.info('Identifying variants and update geneome')
+    for chrom in mySeq:
+        adjustVarCoords(variants[chrom])
+        updateSeq(mySeq[chrom], variants[chrom])
 
-    
+    ################################################################################
+    # Update bed coordinates
+    ################################################################################
+    if args.bed:
+        fusions = updateBedAndSlice(args.bed, variants, varIndex, mySeq)
+        myOut = fusions
+    else:
+        myOut = mySeq
 
-
-
-
-
-
-
+    with open(args.oname, 'w') as OUT:
+        for record in myOut.values():
+            SeqIO.write(record, OUT, "fasta")
