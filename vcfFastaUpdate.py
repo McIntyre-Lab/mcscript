@@ -22,17 +22,26 @@ from mclib import bed as mcbed
 
 def getOptions():
     """ Function to pull in arguments """
-    description = """ This script updates FASTA files. """
+
+    description = """ This script takes a VCF file and updates a FASTA file to incorporate variant calls. """
     parser = argparse.ArgumentParser(description=description, formatter_class=RawDescriptionHelpFormatter)
-    parser.add_argument("--vcf", dest="vcfName", action='store', required=True, help="Name with PATH to a vcf file zipped using bgzip. [Required]")
-    parser.add_argument("--fasta", dest="fastaName", action='store', required=True, help="Name with PATH to a fasta file. [Required]")
-    parser.add_argument("--mask", dest="mask", action='store_true', required=False, help="Select if you just want to mask output with an 'N'. [Optional]")
-    parser.add_argument("--bed", dest="bed", action='store', required=False, help="Name and PATH to a bed file containing fusions locations. [Optional]")
-    parser.add_argument("-o", dest="oname", action='store', required=True, help="Name with PATH of the output FASTA. [Required]")
-    parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
+
+    group1 = parser.add_argument_group(description="Input Files")
+    group1.add_argument("--vcf", dest="vcfName", action='store', required=True, help="Name of VCF file. If not zipped using bgzip will try to create zip. [Required]")
+    group1.add_argument("--fasta", dest="fastaName", action='store', required=True, help="Name of fasta file. [Required]")
+    group1.add_argument("--bed", dest="bed", action='store', required=False, help="Name of a 4-column BED file, locations in BED file will be sliced out of FASTA file. [Optional]")
+
+    group2 = parser.add_argument_group(description="Output Files")
+    group2.add_argument("-o", dest="oname", action='store', required=True, help="Name of output FASTA. [Required]")
+    group2.add_argument("--log", dest="log", action='store', required=False, help="Name of the LOG file [Optional]") 
+
+    group3 = parser.add_argument_group(description="SNP options")
+    group3.add_argument("--mask", dest="mask", action='store_true', required=False, help="Mask SNPs with 'N' instead of updating reference. [Optional]")
+    group3.add_argument("--snps_only", dest="snpsOnly", action='store_true', required=False, help="Only update SNPs, ignore indels. Indels take significantly longer to run. [Optional]")
+
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
+
     args = parser.parse_args()
-    #args = parser.parse_args(['--vcf', '/home/jfear/tmp/r101.vcf.gz', '--fasta','/home/jfear/storage/useful_dmel_data/dmel-all-chromosome-r5.57.fasta', '-o', '/home/jfear/tmp/indel.fasta', '--bed', '/home/jfear/storage/useful_dmel_data/dmel_si_fusions_r5.57.bed', '--debug'])
     return(args)
 
 def buildCoordIndex(seqRecord):
@@ -53,7 +62,7 @@ def buildCoordIndex(seqRecord):
     coordIndex = np.array(xrange(0,bases))
     return coordIndex
 
-def buildVariantDict(myVcf):
+def buildVariantDict(myVcf, snpsOnly):
     """ Build a dictionary where the key is chromosome and the value is a list
     of variants for that chromosomes.
 
@@ -80,7 +89,11 @@ def buildVariantDict(myVcf):
         altbase = str(record.ALT[0])
         diff = len(altbase) - len(refbase)
         end = start + diff          # End is not really necessary until we start slicing bed files
-        variants[record.CHROM].append([start, end, refbase, altbase, diff])
+        if snpsOnly:
+            if diff == 0:
+                variants[record.CHROM].append([start, end, refbase, altbase, diff])
+        else:
+            variants[record.CHROM].append([start, end, refbase, altbase, diff])
 
     return variants
 
@@ -103,7 +116,8 @@ def adjustCoords(varList, coordList):
     for record in varList:
         start = record[0]
         delta = record[4]
-        coordList[start+1:] = coordList[start+1:] + delta
+        if delta != 0:
+            coordList[start+1:] = coordList[start+1:] + delta
 
 def updateSeq(Seq, varList, coordList, chrom):
     """ Update the genomic sequence given a list of variants
@@ -146,7 +160,7 @@ def updateSeq(Seq, varList, coordList, chrom):
                 logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart, newStart))
                 raise ValueError
         elif diff > 0:
-            if mut[newStart] == ref:
+            if mut[newStart] == ref[0]:
                 cnt = newStart + 1
                 for base in alt[1:]:
                     mut.insert(cnt, base)
@@ -237,7 +251,10 @@ if __name__ == '__main__':
     ################################################################################
     logging.info('Importing VCF information')
     myVcf = mcvcf.Vcf(args.vcfName)
-    variants = buildVariantDict(myVcf)
+    variants = buildVariantDict(myVcf, args.snpsOnly)
+
+    if args.snpsOnly:
+        logging.warn('FYI: You are running in SNP ONLY mode, remove --snps_only flag to include indels')
 
     ################################################################################
     # Import FASTA
@@ -263,8 +280,9 @@ if __name__ == '__main__':
         logging.info('{0}: Building coordinate Index'.format(chrom))
         coordIndex = buildCoordIndex(mySeq[chrom])
 
-        logging.info('{0}: Adjusting coordinates'.format(chrom))
-        adjustCoords(variants[chrom], coordIndex)
+        if not args.snpsOnly:
+            logging.info('{0}: Adjusting coordinates'.format(chrom))
+            adjustCoords(variants[chrom], coordIndex)
 
         logging.info('{0}: Updating sequences'.format(chrom))
         updateSeq(mySeq[chrom], variants[chrom], coordIndex, chrom)
