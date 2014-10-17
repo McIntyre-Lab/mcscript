@@ -265,10 +265,10 @@ if __name__ == '__main__':
     ################################################################################
     # Import Bed File
     ################################################################################
+    fusions = dict()
     if args.bed:
         logging.info('Importing BED')
         myBed = mcbed.Bed(args.bed)
-        fusions = dict()
     else:
         pass
 
