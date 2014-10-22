@@ -19,4 +19,4 @@ def set_logger(fname=None,logLevel='info'):
     if fname:
         logging.basicConfig(filename=fname, filemode='w', level=_log, format='%(asctime)s - %(levelname)s - %(message)s')
     else:
-        logging.basicConfig(stream=sys.stdout, level=_log, format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(stream=sys.stderr, level=_log, format='%(asctime)s - %(levelname)s - %(message)s')
