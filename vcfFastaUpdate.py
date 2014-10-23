@@ -90,9 +90,11 @@ def buildVariantDict(myVcf, snpsOnly):
         diff = len(altbase) - len(refbase)
         end = start + diff          # End is not really necessary until we start slicing bed files
         if snpsOnly:
+            # If snpsOnly is on, only add SNPs, ie when diff = 0
             if diff == 0:
                 variants[record.CHROM].append([start, end, refbase, altbase, diff])
         else:
+            # Else add all variants
             variants[record.CHROM].append([start, end, refbase, altbase, diff])
 
     return variants
@@ -117,6 +119,7 @@ def adjustCoords(varList, coordList):
         start = record[0]
         delta = record[4]
         if delta != 0:
+            # Don't adjust coordinates for SNPs
             coordList[start+1:] = coordList[start+1:] + delta
 
 def updateSeq(Seq, varList, coordList, chrom):
@@ -150,6 +153,7 @@ def updateSeq(Seq, varList, coordList, chrom):
         newEnd = coordList[origEnd]
 
         if diff == 0:
+            # If a SNP
             if mut[newStart] == ref:
                 if args.mask:
                     mut[newStart] = 'N'
@@ -160,6 +164,7 @@ def updateSeq(Seq, varList, coordList, chrom):
                 logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart, newStart))
                 raise ValueError
         elif diff > 0:
+            # If a Insertion
             if mut[newStart] == ref[0]:
                 cnt = newStart + 1
                 for base in alt[1:]:
@@ -170,6 +175,7 @@ def updateSeq(Seq, varList, coordList, chrom):
                 logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart, newStart))
                 raise ValueError
         elif diff < 0:
+            # If a Deletion
             if mut[newStart:newStart + len(ref)] == ref:
                 mut[newStart:newStart + len(ref)] = alt
             else:
@@ -249,17 +255,17 @@ if __name__ == '__main__':
     ################################################################################
     # Import VCF information
     ################################################################################
-    logging.info('Importing VCF information')
+    logging.info('Importing VCF information: %s' % args.vcfName)
     myVcf = mcvcf.Vcf(args.vcfName)
     variants = buildVariantDict(myVcf, args.snpsOnly)
 
     if args.snpsOnly:
-        logging.warn('FYI: You are running in SNP ONLY mode, remove --snps_only flag to include indels')
+        logging.INFO('You are running in SNPONLY mode, remove --snps_only flag to include indels')
 
     ################################################################################
     # Import FASTA
     ################################################################################
-    logging.info('Importing FASTA')
+    logging.info('Importing FASTA: %s' % args.fastaName)
     mySeq = SeqIO.to_dict(SeqIO.parse(open(args.fastaName, 'r'), 'fasta'))
 
     ################################################################################
@@ -267,7 +273,7 @@ if __name__ == '__main__':
     ################################################################################
     fusions = dict()
     if args.bed:
-        logging.info('Importing BED')
+        logging.info('Importing BED: %s' % args.bed)
         myBed = mcbed.Bed(args.bed)
     else:
         pass
@@ -298,8 +304,10 @@ if __name__ == '__main__':
     ################################################################################
     if fusions:
         # If there are fusions (i.e. if a bed file) then output fusions.
+        logging.info('Outputing updated fusions')
         myOut = fusions
     else:
+        logging.info('Outputing updated genome')
         myOut = mySeq
 
     with open(args.oname, 'w') as OUT:
