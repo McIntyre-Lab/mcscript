@@ -260,7 +260,7 @@ if __name__ == '__main__':
     variants = buildVariantDict(myVcf, args.snpsOnly)
 
     if args.snpsOnly:
-        logging.INFO('You are running in SNPONLY mode, remove --snps_only flag to include indels')
+        logging.info('You are running in SNPONLY mode, remove --snps_only flag to include indels')
 
     ################################################################################
     # Import FASTA
