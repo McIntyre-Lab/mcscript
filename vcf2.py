@@ -12,19 +12,22 @@ class Vcf(object):
         # index
         ftest = subprocess.check_output(["file", filename])
         if "gzip compressed data, extra field" not in ftest:
-            logging.warn('Input file needs to be compressed by bgzip')
-            logging.info('I will try to run bgzip now')
-
-            bgz = filename+'.gz'
-            with open(bgz, 'w') as FH:
-                p = subprocess.call(['bgzip', '-c', filename], stdout=FH) 
-
-            if p == 0:
-                logging.info('Sucessfully made bzipped file')
-                filename = bgz
+            if os.path.isfile(filename + '.gz'):
+                filename = filename + '.gz'
             else:
-                logging.error('I could not compress the file using bgzip, please run "bgzip {0}"'.format(filename))
-                raise IOError
+                logging.warn('Input file needs to be compressed by bgzip')
+                logging.info('I will try to run bgzip now')
+
+                bgz = filename+'.gz'
+                with open(bgz, 'w') as FH:
+                    p = subprocess.call(['bgzip', '-c', filename], stdout=FH) 
+
+                if p == 0:
+                    logging.info('Sucessfully made bzipped file')
+                    filename = bgz
+                else:
+                    logging.error('I could not compress the file using bgzip, please run "bgzip {0}"'.format(filename))
+                    raise IOError
 
         if not os.path.isfile(filename + '.tbi'):
             logging.warn('A Tabix index file was not found.')
