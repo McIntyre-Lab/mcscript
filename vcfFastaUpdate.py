@@ -59,7 +59,7 @@ def buildCoordIndex(seqRecord):
                                and the value will be updated to the new coordinate.
     """
     bases = len(seqRecord.seq)
-    coordIndex = np.array(xrange(0,bases))
+    coordIndex = np.arange(0,bases)
     return coordIndex
 
 def buildVariantDict(myVcf, snpsOnly):
