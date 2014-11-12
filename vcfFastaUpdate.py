@@ -170,11 +170,8 @@ def updateSeq(Seq, varList, coordList, chrom):
                 raise ValueError
         elif diff > 0:
             # If a Insertion
-            if mut[newStart] == ref[0]:
-                cnt = newStart + lref
-                for base in alt[lref:]:
-                    mut.insert(cnt, base)
-                    cnt += 1
+            if mut[newStart:newStart + lref] == ref:
+                mut[newStart:newStart + lref] = alt
             else:
                 logging.error('coordinates appear to be off for a Insertion')
                 logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
