@@ -59,7 +59,7 @@ def buildCoordIndex(seqRecord):
                                and the value will be updated to the new coordinate.
     """
     bases = len(seqRecord.seq)
-    coordIndex = np.arange(0,bases)
+    coordIndex = np.arange(0,bases)  
     return coordIndex
 
 def buildVariantDict(myVcf, snpsOnly):
@@ -74,7 +74,8 @@ def buildVariantDict(myVcf, snpsOnly):
     --------
     variants (dict) = dictionary of variants where key is chromosome and value
                       is a list of variants organized in a list [position,
-                      reference allele, alternative allele, difference between ref - alt]
+                      reference allele, alternative allele, difference between
+                      ref - alt, length of the reference base]
     """
     # Iterate through each record and add to storage dictionary (variants)
     variants = defaultdict(list)
@@ -82,20 +83,23 @@ def buildVariantDict(myVcf, snpsOnly):
         # Make sure that this VCF only contains a single sample by checking for commas
         if ',' in record.REF or ',' in record.ALT:
             logging.error('VCF file needs to be split by sample for this script to work')
+            logging.debug(record)
             raise ValueError
 
         start = record.POS - 1      # VCF files are 1-based, convert to 0-based
         refbase = record.REF
+        lref = len(refbase)
         altbase = str(record.ALT[0])
-        diff = len(altbase) - len(refbase)
-        end = start + diff          # End is not really necessary until we start slicing bed files
+        lalt = len(altbase)
+        diff = lalt - lref
+        end = start + lref + diff      # End is not really necessary until we start slicing bed files
         if snpsOnly:
             # If snpsOnly is on, only add SNPs, ie when diff = 0
             if diff == 0:
-                variants[record.CHROM].append([start, end, refbase, altbase, diff])
+                variants[record.CHROM].append([start, end, refbase, altbase, diff, lref])
         else:
             # Else add all variants
-            variants[record.CHROM].append([start, end, refbase, altbase, diff])
+            variants[record.CHROM].append([start, end, refbase, altbase, diff, lref])
 
     return variants
 
@@ -116,11 +120,12 @@ def adjustCoords(varList, coordList):
     Updates the position in-place.
     """
     for record in varList:
-        start = record[0]
         delta = record[4]
         if delta != 0:
             # Don't adjust coordinates for SNPs
-            coordList[start+1:] = coordList[start+1:] + delta
+            start = record[0]
+            lref = record[5]
+            coordList[start+lref:] = coordList[start+lref:] + delta
 
 def updateSeq(Seq, varList, coordList, chrom):
     """ Update the genomic sequence given a list of variants
@@ -148,7 +153,7 @@ def updateSeq(Seq, varList, coordList, chrom):
 
     # Iterate through variants and update
     for var in varList:
-        origStart, origEnd, ref, alt, diff = var
+        origStart, origEnd, ref, alt, diff, lref = var
         newStart = coordList[origStart]
         newEnd = coordList[origEnd]
 
@@ -161,27 +166,28 @@ def updateSeq(Seq, varList, coordList, chrom):
                     mut[newStart] = alt
             else:
                 logging.error('coordinates appear to be off for a SNP')
-                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart, newStart))
+                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
                 raise ValueError
         elif diff > 0:
             # If a Insertion
             if mut[newStart] == ref[0]:
-                cnt = newStart + 1
-                for base in alt[1:]:
+                cnt = newStart + lref
+                for base in alt[lref:]:
                     mut.insert(cnt, base)
                     cnt += 1
             else:
                 logging.error('coordinates appear to be off for a Insertion')
-                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart, newStart))
+                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
                 raise ValueError
         elif diff < 0:
             # If a Deletion
-            if mut[newStart:newStart + len(ref)] == ref:
-                mut[newStart:newStart + len(ref)] = alt
+            if mut[newStart:newStart + lref] == ref:
+                mut[newStart:newStart + lref] = alt
             else:
                 logging.error('coordinates appear to be off for a deletion')
                 logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart:newStart + len(ref)], ref, chrom, origStart, newStart))
                 raise ValueError
+
     Seq.seq = mut.toseq()
 
 def sliceAndDiceSeq(bedRow, seqRecord):
