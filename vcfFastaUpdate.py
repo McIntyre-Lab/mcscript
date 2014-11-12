@@ -37,6 +37,7 @@ def getOptions():
 
     group3 = parser.add_argument_group(description="SNP options")
     group3.add_argument("--mask", dest="mask", action='store_true', required=False, help="Mask SNPs with 'N' instead of updating reference. [Optional]")
+    group3.add_argument("--force_mask", dest="fmask", action='store', required=False, help="Given a BED file of regions, these regions will be masked with 'N' before updating the reference. [Optional]")
     group3.add_argument("--snps_only", dest="snpsOnly", action='store_true', required=False, help="Only update SNPs, ignore indels. Indels take significantly longer to run. [Optional]")
 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
@@ -102,6 +103,36 @@ def buildVariantDict(myVcf, snpsOnly):
             variants[record.CHROM].append([start, end, refbase, altbase, diff, lref])
 
     return variants
+
+def force_masking(Seq, chrom, maskBed):
+    """
+    Arguments:
+    ----------
+    Seq (Bio.SeqIO.Seq) = Bio-python SeqIO seq object containing the sequence
+                          for the current chromosome
+
+    chrom (str) = Current chromosome, only used to debug output
+
+    maskBed (str) = File name for a BED file containing the coordinates to mask
+
+    Returns:
+    --------
+    Masks the Seq object in-place, using coordinates provided by maskBed.
+
+    """
+
+    # Create a mutable sequence
+    mut = Seq.seq.tomutable()
+
+    # Import the BED file for masking
+    myBed = mcbed.Bed(maskBed)
+
+    # Iterate over BED file and mask regsions with 'N'
+    for row in myBed.get_all_rows(name=chrom):
+        start = row['chromStart']
+        end = row['chromEnd']
+        mut = mut[start:end] = 'N'
+    Seq.seq = mut.toseq()
 
 def adjustCoords(varList, coordList):
     """ Adjust the variant coordinates from a given location due to indels
@@ -270,6 +301,10 @@ if __name__ == '__main__':
     ################################################################################
     logging.info('Importing FASTA: %s' % args.fastaName)
     mySeq = SeqIO.to_dict(SeqIO.parse(open(args.fastaName, 'r'), 'fasta'))
+    if args.fmask:
+        logging.info('Force Masking Provided Regions: %s' % args.fmask)
+        for chrom in mySeq:
+            force_masking(mySeq[chrom], args.fmask)
 
     ################################################################################
     # Import Bed File
