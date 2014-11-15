@@ -8,7 +8,7 @@ def output_model_to_log(path, model_type, count):
     """ Create output for the log """
     # Construct Output
     message = "\nModel number {0}\nModel type: {1}{2}".format(count, model_type, str(path)) 
-    logging.info(message)
+    logger.info(message)
 
 def createOutput(path, model_type, args):
 

@@ -35,16 +35,11 @@ def getOptions():
     parser.add_argument("-g", dest="gname", action='store', required=True, help="The gene name of the new gene/isoforms being added [Required]")
     parser.add_argument("-t", dest="template", action='store', required=False, help="Name of the PROC CALIS template file [Optional]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     args = parser.parse_args()
     return(args)
 
-if __name__ == '__main__':
-    args = getOptions()
-
-    # Turn on logging
-    mclib.logger.set_logger(args.log, info)
-    mclib.git.git_to_log()
-
+def main(args):
     # Initialize base variable list
     path = semnet.createPath(args.pname)
     newGene = semnet.NewGene(args.newGene)
@@ -70,3 +65,21 @@ if __name__ == '__main__':
     #semnet.models_newlink.add_newlinks_gamma_to_beta(path, args)
     #semnet.models_newlink.add_newlinks_beta_to_gamma(path, args)
     #semnet.models_newlink.add_newlinks_gamma_to_gamma(path, args)
+
+if __name__ == '__main__':
+    # Turn on Logging if option -g was given
+    args = getOptions()
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
+
+    # Run Main part of the script
+    main(args)
+    logger.info("Script complete.")

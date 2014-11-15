@@ -148,7 +148,7 @@ class NewGene(object):
             self.count = utils.isoCount(self.name)
 
         except ValueError:
-            logging.error("If you are adding genes you need to create a new gene object.")
+            logger.error("If you are adding genes you need to create a new gene object.")
 
     def __repr__(self):
         return "\n\nNew Gene: {0}\nNumber of isoforms: {1}\n\n".format(self.name, self.count)

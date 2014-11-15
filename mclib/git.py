@@ -18,9 +18,9 @@ def git_to_log(sname):
     """ Write current git commit information to the log. """
     try:
         git_status, gitdir = get_git(sname)
-        logging.info("Starting %s", sname) 
-        logging.info("Running script from  %s", gitdir) 
-        logging.info("Git commit id: %s", git_status)
+        logger.info("Starting %s", sname) 
+        logger.info("Running script from  %s", gitdir) 
+        logger.info("Git commit id: %s", git_status)
     except:
         print "You need access to the repository to output git information."
         pass

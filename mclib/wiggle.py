@@ -155,14 +155,14 @@ def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionMode
 
     if variantPos:
         # Plot variants
-        logging.debug('Creating variant plot')
+        logger.debug('Creating variant plot')
         ## vax will be the variant subplot
         vax.scatter(variantPos, [0.5]*len(variantPos), marker="^")
         vax.axis('off')  # Hide y-axis on gene model plot
 
     if geneModel:
         # Plot gene models
-        logging.debug('Creating geneModel plot')
+        logger.debug('Creating geneModel plot')
         ## gax will be the gene model subplot
         gax.set_ylim(max(geneModel.yLoc)+3, min(geneModel.yLoc)-3)
         gax.axis('off')  # Hide y-axis on gene model plot
@@ -173,7 +173,7 @@ def plot_wiggle(pileDict, outName, chrom, start, end, geneModel=None, fusionMode
 
     if fusionModel:
         # Plot gene models
-        logging.debug('Creating fusion plot')
+        logger.debug('Creating fusion plot')
         ## fax will be the fusion model subplot
         fax.set_ylim(min(geneModel.yLoc), max(geneModel.yLoc)+5)
         gax.axis('off')  # Hide y-axis on gene model plot
