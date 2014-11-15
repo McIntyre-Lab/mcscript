@@ -15,28 +15,28 @@ class Vcf(object):
             if os.path.isfile(filename + '.gz'):
                 filename = filename + '.gz'
             else:
-                logging.warn('Input file needs to be compressed by bgzip')
-                logging.info('I will try to run bgzip now')
+                logger.warn('Input file needs to be compressed by bgzip')
+                logger.info('I will try to run bgzip now')
 
                 bgz = filename+'.gz'
                 with open(bgz, 'w') as FH:
                     p = subprocess.call(['bgzip', '-c', filename], stdout=FH) 
 
                 if p == 0:
-                    logging.info('Sucessfully made bzipped file')
+                    logger.info('Sucessfully made bzipped file')
                     filename = bgz
                 else:
-                    logging.error('I could not compress the file using bgzip, please run "bgzip {0}"'.format(filename))
+                    logger.error('I could not compress the file using bgzip, please run "bgzip {0}"'.format(filename))
                     raise IOError
 
         if not os.path.isfile(filename + '.tbi'):
-            logging.warn('A Tabix index file was not found.')
-            logging.info('Trying to create tabix index file')
+            logger.warn('A Tabix index file was not found.')
+            logger.info('Trying to create tabix index file')
             try:
                 subprocess.check_call(['tabix', filename, '-p', 'vcf'])
-                logging.info('Sucessfully built tabix index')
+                logger.info('Sucessfully built tabix index')
             except:
-                logging.error('I could not create the index file, please run "tabix {0} -p vcf"'.format(filename))
+                logger.error('I could not create the index file, please run "tabix {0} -p vcf"'.format(filename))
 
         # Create pyvcf object
         self.vcf_reader = pyvcf.Reader(filename=filename, compressed=True)
