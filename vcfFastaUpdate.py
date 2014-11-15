@@ -83,8 +83,8 @@ def buildVariantDict(myVcf, snpsOnly):
     for record in myVcf.vcf_reader:
         # Make sure that this VCF only contains a single sample by checking for commas
         if ',' in record.REF or ',' in record.ALT:
-            logging.error('VCF file needs to be split by sample for this script to work')
-            logging.debug(record)
+            logger.error('VCF file needs to be split by sample for this script to work')
+            logger.debug(record)
             raise ValueError
 
         start = record.POS - 1      # VCF files are 1-based, convert to 0-based
@@ -196,24 +196,24 @@ def updateSeq(Seq, varList, coordList, chrom):
                 else:
                     mut[newStart] = alt
             else:
-                logging.error('coordinates appear to be off for a SNP')
-                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
+                logger.error('coordinates appear to be off for a SNP')
+                logger.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
                 raise ValueError
         elif diff > 0:
             # If a Insertion
             if mut[newStart:newStart + lref] == ref:
                 mut[newStart:newStart + lref] = alt
             else:
-                logging.error('coordinates appear to be off for a Insertion')
-                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
+                logger.error('coordinates appear to be off for a Insertion')
+                logger.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
                 raise ValueError
         elif diff < 0:
             # If a Deletion
             if mut[newStart:newStart + lref] == ref:
                 mut[newStart:newStart + lref] = alt
             else:
-                logging.error('coordinates appear to be off for a deletion')
-                logging.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart:newStart + len(ref)], ref, chrom, origStart, newStart))
+                logger.error('coordinates appear to be off for a deletion')
+                logger.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart:newStart + len(ref)], ref, chrom, origStart, newStart))
                 raise ValueError
 
     Seq.seq = mut.toseq()
@@ -272,37 +272,26 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
             fusID, fusRecord = sliceAndDiceSeq(row, mySeq[chrom])
             fusions[fusID] = fusRecord
     except:
-        logging.warn('The chromosome: {0} did not have any fusions associated with it.'.format(chrom))
+        logger.warn('The chromosome: {0} did not have any fusions associated with it.'.format(chrom))
 
-if __name__ == '__main__':
-    args = getOptions()
-
-    # Turn on logging
-    if args.debug:
-        mclib.logger.set_logger(args.log, 'debug')
-    else:
-        mclib.logger.set_logger(args.log)
-
-    # Output git commit version to log, if user has access
-    mclib.git.git_to_log(__file__)
-
+def main(args):
     ################################################################################
     # Import VCF information
     ################################################################################
-    logging.info('Importing VCF information: %s' % args.vcfName)
+    logger.info('Importing VCF information: %s' % args.vcfName)
     myVcf = mcvcf.Vcf(args.vcfName)
     variants = buildVariantDict(myVcf, args.snpsOnly)
 
     if args.snpsOnly:
-        logging.info('You are running in SNPONLY mode, remove --snps_only flag to include indels')
+        logger.info('You are running in SNPONLY mode, remove --snps_only flag to include indels')
 
     ################################################################################
     # Import FASTA
     ################################################################################
-    logging.info('Importing FASTA: %s' % args.fastaName)
+    logger.info('Importing FASTA: %s' % args.fastaName)
     mySeq = SeqIO.to_dict(SeqIO.parse(open(args.fastaName, 'r'), 'fasta'))
     if args.fmask:
-        logging.info('Force Masking Provided Regions: %s' % args.fmask)
+        logger.info('Force Masking Provided Regions: %s' % args.fmask)
         for chrom in mySeq:
             force_masking(mySeq[chrom], args.fmask)
 
@@ -311,7 +300,7 @@ if __name__ == '__main__':
     ################################################################################
     fusions = dict()
     if args.bed:
-        logging.info('Importing BED: %s' % args.bed)
+        logger.info('Importing BED: %s' % args.bed)
         myBed = mcbed.Bed(args.bed)
     else:
         pass
@@ -319,22 +308,22 @@ if __name__ == '__main__':
     ################################################################################
     # Iterate through the chromosomes and update the genome
     ################################################################################
-    logging.info('Identifying variants and updating genome')
+    logger.info('Identifying variants and updating genome')
     for chrom in mySeq:
-        logging.info('{0}: Building coordinate Index'.format(chrom))
+        logger.info('{0}: Building coordinate Index'.format(chrom))
         coordIndex = buildCoordIndex(mySeq[chrom])
 
         if not args.snpsOnly:
-            logging.info('{0}: Adjusting coordinates'.format(chrom))
+            logger.info('{0}: Adjusting coordinates'.format(chrom))
             adjustCoords(variants[chrom], coordIndex)
 
-        logging.info('{0}: Updating sequences'.format(chrom))
+        logger.info('{0}: Updating sequences'.format(chrom))
         updateSeq(mySeq[chrom], variants[chrom], coordIndex, chrom)
 
         if args.bed:
             # If a BED file was provided slice out the coordinates from updated
             # sequence
-            logging.info('{0}: Updating BED coordinates'.format(chrom))
+            logger.info('{0}: Updating BED coordinates'.format(chrom))
             updateBed(coordIndex, chrom, mySeq, myBed, fusions)
     
     ################################################################################
@@ -342,12 +331,30 @@ if __name__ == '__main__':
     ################################################################################
     if fusions:
         # If there are fusions (i.e. if a bed file) then output fusions.
-        logging.info('Outputing updated fusions')
+        logger.info('Outputing updated fusions')
         myOut = fusions
     else:
-        logging.info('Outputing updated genome')
+        logger.info('Outputing updated genome')
         myOut = mySeq
 
     with open(args.oname, 'w') as OUT:
         for record in myOut.values():
             SeqIO.write(record, OUT, "fasta")
+
+if __name__ == '__main__':
+    # Turn on Logging if option -g was given
+    args = getOptions()
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
+
+    # Run Main part of the script
+    main(args)
+    logger.info("Script complete.")

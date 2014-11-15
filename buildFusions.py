@@ -25,6 +25,7 @@ def getOptions():
     parser.add_argument("--sd", dest='strand', action='store_true', required=False, help="Flag if you want to make strand dependent fusions. The default is to make strand independent fusions [Optional]")
     parser.add_argument("-o", dest="oname", action='store', required=True, help="Name of the output PNG. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     args = parser.parse_args()
     #args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '--sd', '-o', '/home/jfear/Desktop/fb551_sd.bed'])
     return(args)
@@ -65,10 +66,16 @@ def writeOutput(chrom, fusions, strand, sfx, OUT):
         cnt +=1
 
 if __name__ == '__main__':
+    # Turn on Logging if option -g was given
     args = getOptions()
 
     # Turn on logging
-    mclib.logger.set_logger(args.log)
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
     # Output git commit version to log, if user has access
     mclib.git.git_to_log(__file__)
 
@@ -77,7 +84,7 @@ if __name__ == '__main__':
     ################################################################################
 
     # Connect to the database
-    logging.info('connecting to the gff file')
+    logger.info('connecting to the gff file')
     flyGff = mcgff.FlyGff(args.gffName)
 
     # Connect to output file
@@ -98,21 +105,21 @@ if __name__ == '__main__':
             # Create Strand dependent fusions
             for currStrand in ('-', '+'):
                 # Get list of all genes in the genome
-                logging.info('Pulling list of exons for chromosome: {0} on strand {1}'.format(chrom.id,currStrand))
+                logger.info('Pulling list of exons for chromosome: {0} on strand {1}'.format(chrom.id,currStrand))
                 exons = list(flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end),strand = currStrand))
 
                 # Create a list of fusions by merging overlapping exons
-                logging.info('Merging overlapping exons on strand '+currStrand)
+                logger.info('Merging overlapping exons on strand '+currStrand)
                 fusions = list(flyGff.merge(exons, ignore_strand=False))
                 writeOutput(chrom.id, fusions, currStrand, '_SD', OUT)
         else:
             # Create Strand independent fusions
             # Get list of all genes in the genome
-            logging.info('Pulling list of exons for chromosome: '+chrom.id)
+            logger.info('Pulling list of exons for chromosome: '+chrom.id)
             exons = list(flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end)))
 
             # Create a list of fusions by merging overlapping exons
-            logging.info('Merging overlapping exons')
+            logger.info('Merging overlapping exons')
             fusions = list(flyGff.merge(exons, ignore_strand=True))
             writeOutput(chrom.id, fusions, '.' , '_SI', OUT)
 

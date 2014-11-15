@@ -24,6 +24,7 @@ def getOptions():
     parser.add_argument("-o", "--out", dest="oname", action='store', required=True, help="Path and name of the summary table of read counts in csv format [Required]")
     parser.add_argument("-t", "--table", dest="tname", action='store', required=False, help="Path and name of the table showing each sequence and the number of reads with that sequence in tsv format [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Path and name of log file") 
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     args = parser.parse_args()
     #args = parser.parse_args(['-r1', '/home/jfear/tmp/fq/r1.fq', '-r2', '/home/jfear/tmp/fq/r2.fq', '--outdir', '/home/jfear/tmp/files', '-o', '/home/jfear/tmp/files/counts.csv', '-t', '/home/jfear/tmp/files/cnts_table.tsv', '-g', '/home/jfear/tmp/files/test.log'])
     return(args)
@@ -250,7 +251,7 @@ def writeOutputPE(readDict, seqDict, fileNames):
         stats['dist_num'] += 1
 
     if flag_unpaired == 1:
-        logging.warn("Some of your reads are missing their mate pair!")
+        logger.warn("Some of your reads are missing their mate pair!")
 
     # Close Output Files
     UNIQ1.close()
@@ -277,15 +278,15 @@ def main(args):
 
     # Read in first fastq file and create dictionary of read IDs
     readDict = defaultdict(list)
-    logging.info("Reading '%s'" % (args.r1))
+    logger.info("Reading '%s'" % (args.r1))
     readFq(args.r1,readDict)
-    logging.info("Finished reading '%s'" % (args.r1))
+    logger.info("Finished reading '%s'" % (args.r1))
 
     if args.r2:
         # Read in second fastq file and create dictionary of read IDs
-        logging.info("Reading '%s'" % (args.r2))
+        logger.info("Reading '%s'" % (args.r2))
         readFq(args.r2,readDict)
-        logging.info("Finished reading '%s'" % (args.r2))
+        logger.info("Finished reading '%s'" % (args.r2))
 
         # Create a dictionary where the key is unique sequences and value is a list
         # of headers
@@ -300,9 +301,17 @@ def main(args):
 if __name__=='__main__':
     # Turn on Logging if option -g was given
     args = getOptions()
-    mclib.logger.set_logger(args.log)
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
     mclib.git.git_to_log(__file__)
 
     # Run Main part of the script
     main(args)
-    logging.info("Script complete.")
+    logger.info("Script complete.")

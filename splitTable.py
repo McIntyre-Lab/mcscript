@@ -16,9 +16,13 @@ def getOptions():
     parser.add_argument("-o", dest="odir", action='store', required=False, help="Output directory, if not provided will create output in the original file's folder [Optional]")
     parser.add_argument("--header", dest="header", action='store_true', help="Indicate if the file in question has a header [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Path and name of log file [Optional]") 
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--nfiles", dest="nfiles", type=int, action='store', help="The number of files that you want to create")
     group.add_argument("--nlines", dest="nlines", type=int, action='store', help="The number of lines that you want in each output file")
+
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
+
     args = parser.parse_args()
     #args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nfiles', '100', '--header'])
     return(args)
@@ -64,7 +68,7 @@ def nlines(args):
                     OUT.write(header)
                     OUT.write(row)
                     writeFlag += 1
-    logging.info("Created {0} files.".format(fileNum))
+    logger.info("Created {0} files.".format(fileNum))
 
 def main(args):
     if not args.odir:
@@ -74,10 +78,10 @@ def main(args):
         args.prefix = os.path.splitext(os.path.basename(args.fname))[0]
 
     if args.nfiles:
-        logging.info("Splitting into {0} files.".format(args.nfiles))
+        logger.info("Splitting into {0} files.".format(args.nfiles))
         nfiles(args)
     else:
-        logging.info("Creating split files eah with {0} rows.".format(args.nlines))
+        logger.info("Creating split files eah with {0} rows.".format(args.nlines))
         nlines(args)
 
 if __name__=='__main__':
@@ -85,14 +89,15 @@ if __name__=='__main__':
     args = getOptions()
 
     # Turn on logging
+    logger = logging.getLogger()
     if args.debug:
-        mclib.logger.set_logger(args.log, 'debug')
+        mclib.logger.setLogger(logger, args.log, 'debug')
     else:
-        mclib.logger.set_logger(args.log)
+        mclib.logger.setLogger(logger, args.log)
 
     # Output git commit version to log, if user has access
     mclib.git.git_to_log(__file__)
 
     # Run Main part of the script
     main(args)
-    logging.info("Script complete.")
+    logger.info("Script complete.")

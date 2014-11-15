@@ -18,6 +18,7 @@ def getOptions():
     parser.add_argument("--oname", dest="outname", action='store', required=False, help="Name of output file, if not provided I will try to guess [Optional]")
     parser.add_argument("--header", dest="header", action='store_true', help="Indicate if the file in question has a header [Optional]")
     parser.add_argument("-g", "--log", dest="log", action='store', required=False, help="Path and name of log file [Optional]") 
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     args = parser.parse_args()
     #args = parser.parse_args(['-f', '/home/jfear/tmp/*.txt', '-g', '/home/jfear/tmp/test.log', '--header'])
     return(args)
@@ -26,7 +27,7 @@ def removeOldOutput(args):
     """ check if the old output exists and remove the old version """
     try:
         os.remove(args.oname)
-        logging.info("Removed old version of output file: {0}".format(args.oname))
+        logger.info("Removed old version of output file: {0}".format(args.oname))
     except:
         pass
 
@@ -51,7 +52,7 @@ def createOutput(args):
             sumName = bname[0] + '_summary'
 
         args.oname = os.path.join(args.odir, sumName + bname[1])
-        logging.info("File will be output to: {0}".format(args.oname))
+        logger.info("File will be output to: {0}".format(args.oname))
 
     # remove old output if it is there
     removeOldOutput(args)
@@ -71,12 +72,12 @@ def main(args):
     createOutput(args)
 
     # get the list of files to process
-    logging.info("A total of {0} files will be combined".format(len(args.fname)))
+    logger.info("A total of {0} files will be combined".format(len(args.fname)))
 
     with open(args.oname, 'w') as OUT:
         # If header was passed pull the header line
         if args.header:
-            logging.info("Pulling header line")
+            logger.info("Pulling header line")
             getHeader(args)
             OUT.write(args.header)
 
@@ -92,14 +93,15 @@ if __name__=='__main__':
     args = getOptions()
 
     # Turn on logging
+    logger = logging.getLogger()
     if args.debug:
-        mclib.logger.set_logger(args.log, 'debug')
+        mclib.logger.setLogger(logger, args.log, 'debug')
     else:
-        mclib.logger.set_logger(args.log)
+        mclib.logger.setLogger(logger, args.log)
 
     # Output git commit version to log, if user has access
     mclib.git.git_to_log(__file__)
 
     # Run Main part of the script
     main(args)
-    logging.info("Script complete.")
+    logger.info("Script complete.")

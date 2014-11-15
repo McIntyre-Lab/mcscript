@@ -56,24 +56,13 @@ def getOptions():
     #args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', '--bam','/mnt/storage/cegs_aln/bam_fb551_genome_nodup/r101_V1.sorted.bam','/mnt/storage/cegs_aln/bam_fb551_genome_nodup/r101_V2.sorted.bam', '-g', 'InR', '-o', '/home/jfear/tmp/inr.png'])
     return(args)
 
-if __name__ == '__main__':
-    args = getOptions()
-
-    # Turn on logging
-    if args.debug:
-        mclib.logger.set_logger(args.log, 'debug')
-    else:
-        mclib.logger.set_logger(args.log)
-
-    # Output git commit version to log, if user has access
-    mclib.git.git_to_log(__file__)
-
+def main(args):
     ################################################################################
     # GENE ANNOTATION 
     ################################################################################
 
     if args.gffName and args.geneName:
-        logging.info('Getting gene annotation from GFF file')
+        logger.info('Getting gene annotation from GFF file')
         ## Import GFF database
         myGffDb = mcgff.FlyGff(args.gffName)
 
@@ -97,14 +86,14 @@ if __name__ == '__main__':
         geneModel = None
 
     else:
-        logging.error('You need to specify either a gene name along with a GFF or a region to plot')
+        logger.error('You need to specify either a gene name along with a GFF or a region to plot')
         raise ValueError
 
     ################################################################################
     # GENE COVERAGE
     ################################################################################
 
-    logging.info('Creating pileups')
+    logger.info('Creating pileups')
 
     # Pull in bam file and make gene pileup
     pileups = []
@@ -119,7 +108,7 @@ if __name__ == '__main__':
     # Pull Variants if requested
     ################################################################################
     if args.vcfName:
-        logging.info('Processing VCF file')
+        logger.info('Processing VCF file')
 
         # Attach vcf file
         myVcf = mcvcf.Vcf(args.vcfName)
@@ -141,7 +130,7 @@ if __name__ == '__main__':
             else:
                 variantPos.append(pos)
     else:
-        logging.debug('Setting VCF to None')
+        logger.debug('Setting VCF to None')
         variantPos = None
 
     ################################################################################
@@ -156,3 +145,21 @@ if __name__ == '__main__':
     ################################################################################
 
     mcwiggle.plot_wiggle(avgPileup, args.oname, chrom, start, end, geneModel=geneModel, fusionModel=fusionModel, variantPos=variantPos, title=args.sample)
+
+if __name__ == '__main__':
+    # Turn on Logging if option -g was given
+    args = getOptions()
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
+
+    # Run Main part of the script
+    main(args)
+    logger.info("Script complete.")
