@@ -1,7 +1,12 @@
 #!/usr/bin/env python
+
+# Built-in packages
 import argparse 
 import os.path
 import logging
+
+# McLab Packages
+import mclib
 
 def getOptions():
     """ Function to pull in arguments """
@@ -17,21 +22,6 @@ def getOptions():
     args = parser.parse_args()
     #args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nfiles', '100', '--header'])
     return(args)
-
-def setLogger(fname,loglevel):
-    """ Function to handle error logging """
-    logging.basicConfig(filename=fname, level=loglevel, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
-
-def getGit():
-    """ This function will parse the current Git commit version. This will
-    allow recording of exactly which script was used to create a given
-    output."""
-    import subprocess
-    # get full path to script
-    fullname = os.path.abspath(__file__)
-    gitdir = os.path.dirname(fullname)
-    label = subprocess.check_output(["git", "--git-dir="+gitdir+"/.git", "--work-tree="+gitdir,"rev-parse","HEAD"])
-    return(label.rstrip(), gitdir)
 
 def nfiles(args):
     """ Split a tabular file into N files """
@@ -93,16 +83,15 @@ def main(args):
 if __name__=='__main__':
     # Turn on Logging if option -g was given
     args = getOptions()
-    if args.log:
-        setLogger(args.log,logging.INFO)
-    else:
-        setLogger(os.devnull,logging.INFO)
 
-    # Get Git information and start log
-    git_status, gitdir = getGit()
-    logging.info("Starting %s", __file__) 
-    logging.info("Running script from  %s", gitdir) 
-    logging.info("Git commit id: %s", git_status)
+    # Turn on logging
+    if args.debug:
+        mclib.logger.set_logger(args.log, 'debug')
+    else:
+        mclib.logger.set_logger(args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
 
     # Run Main part of the script
     main(args)
