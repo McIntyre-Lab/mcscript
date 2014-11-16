@@ -1,5 +1,6 @@
 import os
 import logging
+logger = logging.getLogger()
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
