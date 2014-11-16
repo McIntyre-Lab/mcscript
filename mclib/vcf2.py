@@ -1,9 +1,10 @@
 import os.path
 import subprocess
 import logging
+logger = logging.getLogger()
 import collections
-
 import vcf as pyvcf
+
 
 class Vcf(object):
     def __init__(self, filename, build=True):
