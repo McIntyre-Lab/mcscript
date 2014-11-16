@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+logger=logging.getLogger()
 from semnet import utils
 
 class SemPath(object):

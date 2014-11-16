@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import logging
+logger=logging.getLogger()
 from os.path import splitext
 import semnet
 from semnet.sas import CalisOut
