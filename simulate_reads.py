@@ -1,10 +1,17 @@
 #!/usr/bin/env python
+
+# Built-in packages
 import argparse
 import logging
+
+# Add-on packages
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import SingleLetterAlphabet
+
+# McLab Packages
+import mclib
 
 def getOptions():
     """Function to pull in command line arguments"""
@@ -13,6 +20,7 @@ def getOptions():
     parser.add_argument('-o','--out', dest='oname', action='store', required=True, help='FASTQ file with simulated reads from FASTA [Required]')
     parser.add_argument('-n','--num', dest='n', action='store', required=True, help='Read length for simulation [Required]')
     parser.add_argument('-g','--log',dest='log',action='store',required=False, help='Create an error log')
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     args = parser.parse_args()
     #args = parser.parse_args(['-i', '/home/jfear/tmp/fa/fb551_si_fusions.fa', '-o', '/home/jfear/tmp/slide_test.fq', '-n', '95'])
     return(args)
@@ -28,12 +36,7 @@ def sliding_window(seq, n):
         result = result[1:] + (elem,)
         yield result
 
-
-def main():
-    args = getOptions()
-    if args.log:
-        setLogger(args.log,logging.INFO)
-
+def main(args):
     num = int(args.n)
     with open(args.fname, 'r') as FA:
         with open(args.oname, 'w') as OUT:
@@ -52,5 +55,19 @@ def main():
                     end = end + 1
 
 if __name__ == '__main__':
-    main()
-    logging.info("Script complete")
+    # Turn on Logging if option -g was given
+    args = getOptions()
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
+
+    # Run Main part of the script
+    main(args)
+    logger.info("Script complete.")
