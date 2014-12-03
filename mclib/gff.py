@@ -129,7 +129,7 @@ class _Anno(object):
         # To start, we create a merged feature of just the first feature.
         current_merged_start = features[0].start
         current_merged_stop = features[0].stop
-        merged_ids = list(features[0].id)
+        merged_ids = [features[0].id,]
 
         # Set up a counter to determine if a feature was merged
         flagMerge = 0
@@ -170,7 +170,7 @@ class _Anno(object):
                 # start and stop.
                 current_merged_start = feature.start
                 current_merged_stop = feature.stop
-                merged_ids = list(feature.id)
+                merged_ids = [feature.id,]
                 flagMerge = 0
 
         # need to yield the last one.

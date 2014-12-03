@@ -15,33 +15,38 @@ from mclib import gff as mcgff
 
 def getOptions():
     """ Function to pull in arguments """
-    description = """ This script constructs wiggle plots and gene models.
-    Wiggle plots are created from sorted BAM files. Gene models require a GFF
-    file at this time.
+    description = """ This script combines overlapping exons into exonic
+    regions (i.e., fusions). The script takes a GFF file, it then takes each
+    chromosome and identifies overlapping exons. The script outputs a BED FILE
+    with genomic coordinates and the associated fusion_id.
     """
 
     parser = argparse.ArgumentParser(description=description, formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument("--gff", dest="gffName", action='store', required=True, help="Name with PATH, to a GFF file. Note if the GFFutils database has not been created it will be, this could take around 30min [Required]")
     parser.add_argument("--sd", dest='strand', action='store_true', required=False, help="Flag if you want to make strand dependent fusions. The default is to make strand independent fusions [Optional]")
-    parser.add_argument("-o", dest="oname", action='store', required=True, help="Name of the output PNG. [Required]")
+    parser.add_argument("--obed", dest="obed", action='store', required=True, help="Name of the output BED. [Required]")
+    parser.add_argument("--otable", dest="otable", action='store', required=True, help="Name of the output Table Relating Fusions to Exons. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
-    args = parser.parse_args()
-    #args = parser.parse_args(['--gff', '/home/jfear/Desktop/dmel-all-no-analysis-r5.51.gff', '--sd', '-o', '/home/jfear/Desktop/fb551_sd.bed'])
+    #args = parser.parse_args()
+    args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', '-o', '/home/jfear/Desktop/fb551_sd.bed'])
     return(args)
 
-def writeOutput(chrom, fusions, strand, sfx, OUT):
+def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
     """ This functions names the fusions and writes their output. If a fusion
     is made from a single exon then it is a singleton and will be prefixed with
     the letter 'S'. If a fusion is made up of overlapping fusions then it is
     prefixed with a 'F'.
 
     Arguments:
+    ----------
     chrom (str) = the current chromosome id
     fusions (list) = a list of merged exons
     strand (str) = the strand to output; {'-', '+'} for SD and {'.'} for SI fusions
     sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
-    OUT (obj) = File output object
+    OUTbed (obj) = File output object for the BED file
+    OUTtable (obj) = File output object for the Table file
+
     """
 
     # Attach the global counter
@@ -60,7 +65,20 @@ def writeOutput(chrom, fusions, strand, sfx, OUT):
         start = str(fusion['start'] - 1)      #remember bed is a 0-based format and gff is 1-based
         end = str(fusion['end'])
         myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
-        OUT.write(myOut)
+        OUTbed.write(myOut)
+
+        # Write output to link fusion_id to exon_ID
+        exons = fusion['exonId']
+        genes = set([x.split[':'][0] for x in exons])
+        if len(genes) == 1:
+            flag_multigene = 0
+        else:
+            flag_multigene = 1
+        for exon in exons:
+            myout = '\t'.join()
+            OUTtable.write()
+
+
 
         # increment fusion counter
         cnt +=1
@@ -80,7 +98,7 @@ if __name__ == '__main__':
     mclib.git.git_to_log(__file__)
 
     ################################################################################
-    # Initilize Variables and Files
+    # Initialize Variables and Files
     ################################################################################
 
     # Connect to the database
@@ -88,9 +106,10 @@ if __name__ == '__main__':
     flyGff = mcgff.FlyGff(args.gffName)
 
     # Connect to output file
-    OUT = open(args.oname, 'w')
+    OUTbed = open(args.obed, 'w')
+    OUTtable = open(args.otable, 'w')
 
-    # Initialize Counter
+    # Initialize FUSION_ID Counter
     cnt = 1
 
     ################################################################################
@@ -100,6 +119,7 @@ if __name__ == '__main__':
     # Get list of chromosomes
     chromosomes = flyGff.get_chrom()
 
+    # Take each chromosome and identify overlapping exons
     for chrom in chromosomes:
         if args.strand:
             # Create Strand dependent fusions
@@ -111,7 +131,7 @@ if __name__ == '__main__':
                 # Create a list of fusions by merging overlapping exons
                 logger.info('Merging overlapping exons on strand '+currStrand)
                 fusions = list(flyGff.merge(exons, ignore_strand=False))
-                writeOutput(chrom.id, fusions, currStrand, '_SD', OUT)
+                writeOutput(chrom.id, fusions, currStrand, '_SD', OUTbed, OUTtable)
         else:
             # Create Strand independent fusions
             # Get list of all genes in the genome
@@ -121,6 +141,7 @@ if __name__ == '__main__':
             # Create a list of fusions by merging overlapping exons
             logger.info('Merging overlapping exons')
             fusions = list(flyGff.merge(exons, ignore_strand=True))
-            writeOutput(chrom.id, fusions, '.' , '_SI', OUT)
+            writeOutput(chrom.id, fusions, '.' , '_SI', OUTbed, OUTtable)
 
-    OUT.close()
+    OUTbed.close()
+    OUTtable.close()
