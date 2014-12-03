@@ -100,7 +100,7 @@ class _Anno(object):
 
         ignore_strand (bool) = If True, features on multiple strands will be
         merged, and the final strand will be set to '.'.  Otherwise, ValueError
-        will be raised if trying to merge features on differnt strands.
+        will be raised if trying to merge features on different strands.
         """
 
         # Consume iterator up front...
@@ -129,6 +129,7 @@ class _Anno(object):
         # To start, we create a merged feature of just the first feature.
         current_merged_start = features[0].start
         current_merged_stop = features[0].stop
+        merged_ids = list(features[0].id)
 
         # Set up a counter to determine if a feature was merged
         flagMerge = 0
@@ -138,6 +139,7 @@ class _Anno(object):
             # Does this feature start within the currently merged feature?...
             if feature.start <= current_merged_stop + 1:
                 flagMerge = 1
+                merged_ids.append(feature.id)
                 # ...It starts within, so leave current_merged_start where it
                 # is.  Does it extend any farther?
                 if feature.stop >= current_merged_stop:
@@ -160,13 +162,15 @@ class _Anno(object):
                     strand=strand,
                     frame='.',
                     attributes='',
-                    merged=flagMerge)
+                    merged=flagMerge,
+                    exonId=merged_ids)
                 yield merged_feature
 
                 # and we start a new one, initializing with this feature's
                 # start and stop.
                 current_merged_start = feature.start
                 current_merged_stop = feature.stop
+                merged_ids = list(feature.id)
                 flagMerge = 0
 
         # need to yield the last one.
@@ -182,7 +186,8 @@ class _Anno(object):
             strand=strand,
             frame='.',
             attributes='',
-            merged=flagMerge)
+            merged=flagMerge,
+            exonId=merged_ids)
         yield merged_feature
 
 class FlyGff(_Anno):
