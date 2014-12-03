@@ -29,7 +29,7 @@ def getOptions():
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     #args = parser.parse_args()
-    args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', '-o', '/home/jfear/Desktop/fb551_sd.bed'])
+    args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', '--obed', '/home/jfear/Desktop/fb551_si.bed', '--otable', '/home/jfear/Desktop/fb551_si.tsv'])
     return(args)
 
 def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
@@ -41,7 +41,7 @@ def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
     Arguments:
     ----------
     chrom (str) = the current chromosome id
-    fusions (list) = a list of merged exons
+    fusions (generator) = is a generator of merged exons
     strand (str) = the strand to output; {'-', '+'} for SD and {'.'} for SI fusions
     sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
     OUTbed (obj) = File output object for the BED file
@@ -53,32 +53,41 @@ def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
     global cnt
 
     for fusion in fusions:
+        # Get list of exons in a fusion
+        exons = fusion['exonId']
+
         # Name the Fusion based on if it is a singleton or fusion.
         if fusion['merged']:
             # fusion
             name = "F{0}{1}".format(cnt, sfx)
+
+            # Are there multiple genes in this fusion
+            ## Get a list of genes
+            genes = set([x.split(':')[0] for x in exons])
+
+            ## If there are more than 1 gene set flag_multigene
+            if len(genes) == 1:
+                flag_multigene = '0'
+            else:
+                flag_multigene = '1'
         else:
             # singleton
             name = "S{0}{1}".format(cnt, sfx)
 
+            # singletons by definition don't have multiple genes 
+            flag_multigene = '0'
+
         # Write output in a bed format 
-        start = str(fusion['start'] - 1)      #remember bed is a 0-based format and gff is 1-based
+        start = str(fusion['start'] - 1) # remember bed is a 0-based format and gff is 1-based
         end = str(fusion['end'])
         myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
         OUTbed.write(myOut)
 
-        # Write output to link fusion_id to exon_ID
-        exons = fusion['exonId']
-        genes = set([x.split[':'][0] for x in exons])
-        if len(genes) == 1:
-            flag_multigene = 0
-        else:
-            flag_multigene = 1
+        # Write output table linking fusion_id to exon_ID
         for exon in exons:
-            myout = '\t'.join()
-            OUTtable.write()
-
-
+            gene = exon.split(':')[0]
+            myout = '\t'.join([name, exon, gene, flag_multigene]) + "\n"
+            OUTtable.write(myout)
 
         # increment fusion counter
         cnt +=1
@@ -105,9 +114,13 @@ if __name__ == '__main__':
     logger.info('connecting to the gff file')
     flyGff = mcgff.FlyGff(args.gffName)
 
-    # Connect to output file
+    # Open output BED file
     OUTbed = open(args.obed, 'w')
+
+    # Open output Table file and add header
     OUTtable = open(args.otable, 'w')
+    myout = '\t'.join(['fusion_id', 'exon_id', 'primary_FBgn', 'flag_multigene']) + "\n"
+    OUTtable.write(myout)
 
     # Initialize FUSION_ID Counter
     cnt = 1
@@ -126,21 +139,21 @@ if __name__ == '__main__':
             for currStrand in ('-', '+'):
                 # Get list of all genes in the genome
                 logger.info('Pulling list of exons for chromosome: {0} on strand {1}'.format(chrom.id,currStrand))
-                exons = list(flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end),strand = currStrand))
+                exons = flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end),strand = currStrand)
 
                 # Create a list of fusions by merging overlapping exons
                 logger.info('Merging overlapping exons on strand '+currStrand)
-                fusions = list(flyGff.merge(exons, ignore_strand=False))
+                fusions = flyGff.merge(exons, ignore_strand=False)
                 writeOutput(chrom.id, fusions, currStrand, '_SD', OUTbed, OUTtable)
         else:
             # Create Strand independent fusions
             # Get list of all genes in the genome
             logger.info('Pulling list of exons for chromosome: '+chrom.id)
-            exons = list(flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end)))
+            exons = flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end))
 
             # Create a list of fusions by merging overlapping exons
             logger.info('Merging overlapping exons')
-            fusions = list(flyGff.merge(exons, ignore_strand=True))
+            fusions = flyGff.merge(exons, ignore_strand=True)
             writeOutput(chrom.id, fusions, '.' , '_SI', OUTbed, OUTtable)
 
     OUTbed.close()
