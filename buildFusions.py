@@ -28,8 +28,8 @@ def getOptions():
     parser.add_argument("--otable", dest="otable", action='store', required=True, help="Name of the output Table Relating Fusions to Exons. [Required]")
     parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
-    args = parser.parse_args()
-    #args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.51.gff', '--obed', '/home/jfear/Desktop/fb551_si.bed', '--otable', '/home/jfear/Desktop/fb551_si.tsv'])
+    #args = parser.parse_args()
+    args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.57.gff', '--obed', '/home/jfear/Desktop/fb557_si.bed', '--otable', '/home/jfear/Desktop/fb551_si.tsv','--debug'])
     return(args)
 
 def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
