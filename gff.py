@@ -110,14 +110,11 @@ class _Anno(object):
             raise StopIteration
 
         # Either set all strands to '+' or check for strand-consistency.
-        if ignore_strand:
-            strand = '.'
-        else:
+        if not ignore_strand:
             strands = [i.strand for i in features]
             if len(set(strands)) > 1:
                 raise ValueError('Specify ignore_strand=True to force merging '
                                  'of multiple strands')
-            strand = strands[0]
 
         # Sanity check to make sure all features are from the same chromosome.
         chroms = [i.chrom for i in features]
@@ -130,6 +127,7 @@ class _Anno(object):
         current_merged_start = features[0].start
         current_merged_stop = features[0].stop
         merged_ids = [features[0].attributes['Name'][0], ]
+        merged_strand = [features[0].strand, ]
 
         # Set up a counter to determine if a feature was merged
         flagMerge = 0
@@ -140,6 +138,8 @@ class _Anno(object):
             if feature.start <= current_merged_stop + 1:
                 flagMerge = 1
                 merged_ids.append(feature.attributes['Name'][0])
+                merged_strand.append(feature.strand)
+
                 # ...It starts within, so leave current_merged_start where it
                 # is.  Does it extend any farther?
                 if feature.stop >= current_merged_stop:
@@ -152,6 +152,11 @@ class _Anno(object):
             else:
                 # The start position is outside the merged feature, so we're
                 # done with the current merged feature.  Prepare for output...
+                if len(set(merged_strand)) > 1:
+                    strand = "."
+                else:
+                    strand = merged_strand[0]
+                
                 merged_feature = dict(
                     seqid=feature.chrom,
                     source='.',
@@ -171,6 +176,7 @@ class _Anno(object):
                 current_merged_start = feature.start
                 current_merged_stop = feature.stop
                 merged_ids = [feature.attributes['Name'][0],]
+                merged_strand = [feature.strand, ]
                 flagMerge = 0
 
         # need to yield the last one.
