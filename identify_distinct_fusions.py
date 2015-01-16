@@ -54,11 +54,13 @@ def readFA(db):
     for record in db:
         #TODO: replace 'pass' with code to build dictionary where 'sequence' is
         #      key and append 'fusion_id' to value
-        pass
+        seqDict[str(record.seq).append(record.fusion_id)]
+        
 
 
     #TODO: Add logging information to count how many fusions we start with and
     #      how many sequences are in the dictionary
+    logging.info("Reading the FASTA file, creating dictionary.")
     return(seqDict)
 
 def writeFA(oname,mydict,db):
@@ -83,7 +85,7 @@ def writeFA(oname,mydict,db):
         for record in mydict:
             #TODO: record is going to be a sequence, so you want to pull out
             #      the first fusion_id
-            pass
+            print record.fusion_id[0]
 
             # Pull the SeqRecord out of database
             #TODO: To pull record, hint use fusion_id as the key for the db dictionary
@@ -92,6 +94,7 @@ def writeFA(oname,mydict,db):
             # Write Sequence to FASTA file
             #TODO: figure out how to write
             #      http://biopython.org/wiki/SeqIO
+            SeqIO.write(record,OUT,"fasta")
 
 def main(args):
     """ Main Script """
