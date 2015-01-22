@@ -32,7 +32,7 @@ def getOptions():
     #args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.57.gff', '--obed', '/home/jfear/Desktop/fb557_si.bed', '--otable', '/home/jfear/Desktop/fb551_si.tsv','--debug'])
     return(args)
 
-def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
+def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
     """ This functions names the fusions and writes their output. If a fusion
     is made from a single exon then it is a singleton and will be prefixed with
     the letter 'S'. If a fusion is made up of overlapping fusions then it is
@@ -42,7 +42,6 @@ def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
     ----------
     chrom (str) = the current chromosome id
     fusions (generator) = is a generator of merged exons
-    strand (str) = the strand to output; {'-', '+'} for SD and {'.'} for SI fusions
     sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
     OUTbed (obj) = File output object for the BED file
     OUTtable (obj) = File output object for the Table file
@@ -63,7 +62,7 @@ def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
 
             # Are there multiple genes in this fusion
             ## Get a list of genes
-            genes = set([x.split(':')[0] for x in exons])
+            genes = set([':'.join(x.split(':')[:-1]) for x in exons])
 
             ## If there are more than 1 gene set flag_multigene
             if len(genes) == 1:
@@ -80,12 +79,13 @@ def writeOutput(chrom, fusions, strand, sfx, OUTbed, OUTtable):
         # Write output in a bed format 
         start = str(fusion['start'] - 1) # remember bed is a 0-based format and gff is 1-based
         end = str(fusion['end'])
+        strand = str(fusion['strand'])
         myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
         OUTbed.write(myOut)
 
         # Write output table linking fusion_id to exon_ID
         for exon in exons:
-            gene = exon.split(':')[0]
+            gene = ':'.join(exon.split(':')[:-1])
             myout = '\t'.join([name, exon, gene, flag_multigene]) + "\n"
             OUTtable.write(myout)
 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                 # Create a list of fusions by merging overlapping exons
                 logger.info('Merging overlapping exons on strand '+currStrand)
                 fusions = flyGff.merge(exons, ignore_strand=False)
-                writeOutput(chrom.id, fusions, currStrand, '_SD', OUTbed, OUTtable)
+                writeOutput(chrom.id, fusions, '_SD', OUTbed, OUTtable)
         else:
             # Create Strand independent fusions
             # Get list of all genes in the genome
@@ -154,7 +154,7 @@ if __name__ == '__main__':
             # Create a list of fusions by merging overlapping exons
             logger.info('Merging overlapping exons')
             fusions = flyGff.merge(exons, ignore_strand=True)
-            writeOutput(chrom.id, fusions, '.' , '_SI', OUTbed, OUTtable)
+            writeOutput(chrom.id, fusions, '_SI', OUTbed, OUTtable)
 
     OUTbed.close()
     OUTtable.close()
