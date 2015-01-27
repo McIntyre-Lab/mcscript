@@ -19,7 +19,7 @@ def get_qual(filename):
     possible_encodings = set(('phred33', 'phred64'))
 
     phred33_min = 33
-    phred64_min = 59
+    phred64_min = 64
     phred64_offset = phred64_min - phred33_min # 26
     maxQuality = 41
 
