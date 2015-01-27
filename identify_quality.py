@@ -28,9 +28,9 @@ def get_qual(filename):
     maxSeen = 0
 
     # I am importing everything as a sanger so I have to off set the solexa and
-    # illumina minumus, hence the threshold above.
+    # illumina minimum, hence the threshold above.
     seqio = SeqIO.parse(filename, "fastq-sanger") 
-    seqSlice = itertools.islice(seqio, 0, 5000, 100)
+    seqSlice = itertools.islice(seqio, 0, 5000, 10)
 
     for record in seqSlice:
         quals = record.letter_annotations["phred_quality"]
