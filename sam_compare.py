@@ -182,7 +182,6 @@ def get_sam_reads(samdata, fqids, read_length, samid):
     dupqname = 0
     reads = {}
     re_mmc = re.compile('(\d+)M')
-    re_chr = re.compile('^(.+?)\|')
 
     # process all sam file input lines
     #print("    Count: 0", end="")
@@ -200,13 +199,7 @@ def get_sam_reads(samdata, fqids, read_length, samid):
             name = record[0]
             if not fqids or name in fqids:
                 # get reference name
-                # "If @SQ header lines are present, look for data followed by separator '|',RNAME"
-                # "An unmapped segment without coordinate has a '*' in this field."
-                match = re_chr.search(record[2])
-                if match and match.groups():
-                    rname = match.groups[0]
-                else:
-                    rname = record[2]
+                rname = record[2]
 
                 # process this SAM record
                 processed += 1
