@@ -105,6 +105,7 @@ class _Anno(object):
 
         # Consume iterator up front...
         features = list(features)
+        logging.debug('%d exons' % len(features))
 
         if len(features) == 0:
             raise StopIteration

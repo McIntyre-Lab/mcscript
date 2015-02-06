@@ -45,11 +45,10 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
     sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
     OUTbed (obj) = File output object for the BED file
     OUTtable (obj) = File output object for the Table file
-
     """
 
     # Attach the global counter
-    global cnt
+    localCnt = 0
 
     for fusion in fusions:
         # Get list of exons in a fusion
@@ -58,7 +57,7 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
         # Name the Fusion based on if it is a singleton or fusion.
         if fusion['merged']:
             # fusion
-            name = "F{0}{1}".format(cnt, sfx)
+            name = "F{0}{1}".format(localCnt, sfx)
 
             # Are there multiple genes in this fusion
             ## Get a list of genes
@@ -71,7 +70,7 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
                 flag_multigene = '1'
         else:
             # singleton
-            name = "S{0}{1}".format(cnt, sfx)
+            name = "S{0}{1}".format(localCnt, sfx)
 
             # singletons by definition don't have multiple genes 
             flag_multigene = '0'
@@ -90,26 +89,18 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
             OUTtable.write(myout)
 
         # increment fusion counter
-        cnt +=1
+        localCnt +=1
 
-if __name__ == '__main__':
-    # Turn on Logging if option -g was given
-    args = getOptions()
+    logger.debug('%d fusions' % localCnt)
 
-    # Turn on logging
-    logger = logging.getLogger()
-    if args.debug:
-        mclib.logger.setLogger(logger, args.log, 'debug')
-    else:
-        mclib.logger.setLogger(logger, args.log)
+    # Add to the global fusion counter
+    global cnt
+    cnt += localCnt
 
-    # Output git commit version to log, if user has access
-    mclib.git.git_to_log(__file__)
-
+def main(args):
     ################################################################################
     # Initialize Variables and Files
     ################################################################################
-
     # Connect to the database
     logger.info('connecting to the gff file')
     flyGff = mcgff.FlyGff(args.gffName)
@@ -122,15 +113,15 @@ if __name__ == '__main__':
     myout = '\t'.join(['fusion_id', 'exon_id', 'primary_FBgn', 'flag_multigene']) + "\n"
     OUTtable.write(myout)
 
-    # Initialize FUSION_ID Counter
-    cnt = 1
-
     ################################################################################
     # Build Fusions
     ################################################################################
-
     # Get list of chromosomes
     chromosomes = flyGff.get_chrom()
+
+    # Initialize global FUSION_ID Counter
+    global cnt
+    cnt = 1
 
     # Take each chromosome and identify overlapping exons
     for chrom in chromosomes:
@@ -156,5 +147,24 @@ if __name__ == '__main__':
             fusions = flyGff.merge(exons, ignore_strand=True)
             writeOutput(chrom.id, fusions, '_SI', OUTbed, OUTtable)
 
+    logger.debug('%d total fusions' % cnt)
     OUTbed.close()
     OUTtable.close()
+
+if __name__ == '__main__':
+    # Turn on Logging if option -g was given
+    args = getOptions()
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
+
+    # Run Main part of the script
+    main(args)
+    logger.info("Script complete.")
