@@ -44,7 +44,7 @@ def main():
                     curr[2][0] = curr[2][0]
                     curr[2][1] = curr[2][1]
                 except:
-                    mdict[cols[0]][cols[1]] = [cols[2], int(cols[3]), cols[4:]]
+                    mdict[cols[0]][cols[1]] = [cols[2], int(cols[3])]
 
     with open(args.oname, 'w') as OUT:
         # Write out mdict to a new mpileup file
