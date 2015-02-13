@@ -24,7 +24,11 @@ def rawMpileup2Wig(fname,oname):
         with open(fname, 'r') as IN:
             currChrom = ''
             for row in IN:
-                chrom, pos, refBase, count, readBase, readQual = row.split('\t')
+                cols = row.split('\t')
+                chrom = cols[0] 
+                pos = cols[1] 
+                refBase = cols[2]
+                count = cols[3]
                 if chrom == currChrom:
                     OUT.write(str(pos) + '\t' + str(count) + "\n")
                 else:
@@ -59,7 +63,11 @@ def convMpileup2Wig(fname,oname,bedDict,flagJunc):
         with open(fname, 'r') as IN:
             if flagJunc:
                 for row in IN:
-                    fusion, pos, refBase, count, readBase, readQual = row.split('\t')
+                    cols = row.split('\t')
+                    fusion = cols[0]
+                    pos = cols[1] 
+                    refBase = cols[2] 
+                    count = cols[3]
                     splitFus = fusion.split('|')
                     joinFus = '|'.join(splitFus[0:2])
                     currFusion = bedDict[joinFus]
@@ -75,7 +83,11 @@ def convMpileup2Wig(fname,oname,bedDict,flagJunc):
                     pileList.append((str(chrom), currPos, int(count)))
             else:
                 for row in IN:
-                    fusion, pos, refBase, count, readBase, readQual = row.split('\t')
+                    cols = row.split('\t')
+                    fusion = cols[0]
+                    pos = cols[1] 
+                    refBase = cols[2] 
+                    count = cols[3]
                     currFusion = bedDict[fusion]
                     chrom = currFusion[0]
                     currPos = currFusion[1] + int(pos)
@@ -110,7 +122,6 @@ def main():
         logging.info("Converting '%s' to '%s'" % (args.fname,args.oname))
         convMpileup2Wig(args.fname,args.oname,bDict,flagJunc)
         logging.info("Finished converting '%s' to '%s'" % (args.fname,args.oname))
-
 
 if __name__=='__main__':
     main()
