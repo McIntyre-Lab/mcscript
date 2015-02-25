@@ -27,26 +27,43 @@ def getOptions():
     #args = parser.parse_args(['-f', '/home/jfear/tmp/test.csv', '--prefix', 'bob', '-g', '/home/jfear/tmp/test.log','--nfiles', '100', '--header'])
     return(args)
 
-def nfiles(args):
-    """ Split a tabular file into N files """
-    fileArray = []
-    for numFile in range(1, args.nfiles+1):
-        fileArray.append(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, numFile)))
+def file_len(fname):
+    """ Count the number of lines in a file """
+    with open(fname) as fn:
+        for i, l in enumerate(fn):
+            pass
+    return i + 1
 
-    writeFlag = 0
+def nfiles(args, numRows):
+    """ Split a tabular file into N files """
     with open(args.fname, 'r') as fname:
-        for index, row in enumerate(fname):
-            if index == 0 and args.header:
-                for fileName in fileArray:
-                    with open(fileName, 'w') as OUT:
-                        OUT.write(row)
-            else:
-                with open(fileArray[writeFlag], 'a+') as OUT:
-                    OUT.write(row)
-                    if writeFlag < args.nfiles - 1:
-                        writeFlag += 1
-                    else:
-                        writeFlag = 0
+        if args.header:
+            # If there is a header pull it and remove one from row count
+            header = fname.next()
+            numRows -= 1
+
+        # How many blocks do we need to output entire file
+        if numRows % args.nfiles == 0:
+            # The number of rows divides evenly by the number of files
+            numBlocks = numRows / args.nfiles
+
+        elif numRows <= args.nfiles :
+            # The number of rows is less than or equal to the number of files
+            numBlocks = 1
+            logger.error("You are trying to split a file with {0} rows into {1} files.".format(numRows, args.nfiles))
+            exit(1)
+
+        else:
+            # The number of rows are not evenly divisible
+            numBlocks = numRows / args.nfiles + 1
+
+        for fileNum in args.nfiles:
+            with open(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, fileNum))) as OUT:
+                for J in xrange(numBlocks):
+                    try:
+                        row = fname.next()
+                    except:
+                        break
 
 def nlines(args):
     """ Split a tabular file such that all output files have N rows """
@@ -79,7 +96,8 @@ def main(args):
 
     if args.nfiles:
         logger.info("Splitting into {0} files.".format(args.nfiles))
-        nfiles(args)
+        numRows = file_len(args.fname)
+        nfiles(args, numRows)
     else:
         logger.info("Creating split files eah with {0} rows.".format(args.nlines))
         nlines(args)
