@@ -57,11 +57,13 @@ def nfiles(args, numRows):
             # The number of rows are not evenly divisible
             numBlocks = numRows / args.nfiles + 1
 
-        for fileNum in args.nfiles:
-            with open(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, fileNum))) as OUT:
+        for fileNum in xrange(args.nfiles):
+            with open(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, fileNum)), 'w') as OUT:
+                OUT.write(header)
                 for J in xrange(numBlocks):
                     try:
                         row = fname.next()
+                        OUT.write(row)
                     except:
                         break
 
