@@ -12,6 +12,9 @@ import numpy as np
 from numpy.random import choice
 from Bio import SeqIO
 
+# McLab Packages
+import mclib
+
 def getOptions():
     """ Function to pull in arguments """
     description="""This script takes a FASTA file and samples records randomly with replacement then outputs a new FASTA file.
@@ -26,41 +29,6 @@ def getOptions():
     args = parser.parse_args()
     #args = parser.parse_args(['-f', '/home/jfear/tmp/dmel-all-chromosome-r5.51.fasta', '-o', '/home/jfear/tmp/output.fa','-n', '2', '--debug'])
     return(args)
-
-def setLogger(args):
-    """ Function to set up log handling 
-    Arguments
-    ========
-    args = object with all command line arguments
-    
-    Returns: a logger that will output general info/debug/warnings to STDOUT
-    and all errors to STDERR
-    """
-    # If debug flag is given output additional debug info
-    if args.debug:
-        _lvl = logging.DEBUG
-    else:
-        _lvl = logging.INFO
-    logger = logging.getLogger()
-    logger.setLevel(_lvl)
-
-    ## Set logging level for the different output handlers. 
-    ## ERRORs to STDERR, and everything else to STDOUT
-    loghandler = logging.StreamHandler(stream=sys.stdout)
-    errhandler = logging.StreamHandler(stream=sys.stderr)
-    loghandler.setLevel(_lvl)
-    errhandler.setLevel(logging.ERROR)
-
-    # Format the log handlers
-    logfmt = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    loghandler.setFormatter(logfmt)
-    errhandler.setFormatter(logfmt)
-
-    # Add handler to the main logger
-    logger.addHandler(loghandler)
-    logger.addHandler(errhandler)
-
-    return logger
 
 def countRecords(fname):
     """ Count the number of reqcords in the original FASTA file. 
@@ -108,18 +76,27 @@ def sampleRecrods(args, count):
                     SeqIO.write(record, OUT, 'fasta')
                 cnt += 1
 
-if __name__=='__main__':
-    # Pull in command line options
-    args = getOptions()
-
-    # Turn on logging
-    logger = setLogger(args)
-
-    # Run Main part of the script
+def main(args):
     ## Count the number of records in the file
     numRecords = countRecords(args.fname)
 
     ## Randomly sample records
     sampleRecrods(args, numRecords)
 
+if __name__=='__main__':
+    # Turn on Logging if option -g was given
+    args = getOptions()
+
+    # Turn on logging
+    logger = logging.getLogger()
+    if args.debug:
+        mclib.logger.setLogger(logger, args.log, 'debug')
+    else:
+        mclib.logger.setLogger(logger, args.log)
+
+    # Output git commit version to log, if user has access
+    mclib.git.git_to_log(__file__)
+
+    # Run Main part of the script
+    main(args)
     logger.info("Script complete.")
