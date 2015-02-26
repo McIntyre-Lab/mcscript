@@ -58,7 +58,7 @@ def nfiles(args, numRows):
             numBlocks = numRows / args.nfiles + 1
 
         for fileNum in xrange(args.nfiles):
-            with open(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, fileNum)), 'w') as OUT:
+            with open(os.path.join(args.odir,"{0}_{1}.csv".format(args.prefix, fileNum + 1)), 'w') as OUT:
                 OUT.write(header)
                 for J in xrange(numBlocks):
                     try:
