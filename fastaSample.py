@@ -99,7 +99,7 @@ def sampleRecrods(args, count):
         logger.error('There are only {} records in your original file and you are tyring to sample {}.'.format(count, args.nrec))
         sys.exit(1)
 
-    logger.info('Sampling records from {} and writing to {}'.format(args.fname, args.oname))
+    logger.info('Sampling {} records from {} and writing to {}'.format(args.nrec, args.fname, args.oname))
     with open(args.oname, 'w') as OUT:
         with open(args.fname, 'r') as FA:
             cnt = 0
