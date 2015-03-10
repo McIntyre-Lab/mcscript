@@ -1,3 +1,0 @@
-[submodule "mclib"]
-	path = mclib
-	url = git@github.com:McIntyre-Lab/mclib.git
