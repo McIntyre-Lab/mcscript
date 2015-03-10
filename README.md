@@ -5,6 +5,7 @@ This is a collection of scripts that we use for handling various types of genomi
 These scripts were created and tested on several Linux environments, mileage may vary on Mac OSX and Windows. The following programs are required:
 
 git
+
 python >=2.7.3
 
 Various python modules may be necessary depending on the script that is being used. Please see the import lines at the top of the script to determine specific dependencies.
