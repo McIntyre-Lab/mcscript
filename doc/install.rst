@@ -1,70 +1,45 @@
-Installation Instructions
-=========================
+McIntyre Scripts Installation Instructions
+==========================================
 
-Setup Git
-----------
+Install McIntyre Library Repository
+-----------------------------------
 
-1. First lets set up a hostname for accessing the git repository so things are
-   a little easier. Edit the ``.ssh/config`` file in your home directory::
+1. Before installing McIntyre Scripts, you need to install the McIntyre
+   Library. Follow these `installation instruction
+   <http://bio.rc.ufl.edu/pub/mcintyre/mcpython/mclib/install.html>`_.
 
-      > vi $HOME/.ssh/config
+Clone Git Repository
+--------------------
 
-   Add the following text::
-					
-    host hpcgit
-        hostname git.hpc.ufl.edu
-        user mcintyre
+1. Clone the McIntyre Scripts to the same location as the McIntyre Library repository.::
 
-   Make sure that you use 'mcintyre' as the user, we all use the same user name.
-   Save and exit the file.
+        $ git clone https://github.com/McIntyre-Lab/mcscript.git $HOME/devel/mcscript
 
+Congrats you now have a local copy of the McIntyre Scripts ``mcscript`` repository.
 
-2. Before accessing the git repository you need to have your ``id_rsa.pub`` key
-   added to it. Contact Alison, Justin, or Alex on how to do this.
-
-
-3. Now lets setup a local developmental environment. In your home directory,
-   create a new directory called ``devel``::
-
-    > mkdir $HOME/devel
-
-
-3. Lets clone the python.git repository into the ``devel`` folder. Type into
-   the command line::
-	
-    > cd $HOME/devel
-    > git clone hpcgit:python.git python.git
-
-
-Congrats you now have a local copy of the McIntyre lab ``python.git`` repository.
-
-Setup Python Environment
+Setup Path Environment
 -------------------------
 
-Now lets set up your local environment to be able to use the scripts and
-libraries in the python.git folder.
+To make things easier, add this location ``$HOME/devel/mscript`` to your PATH.
+This will allow you to run the scripts without having to point to the folder.
+You can do this by editing the ``$HOME/.profile``. 
 
-1. First wee need to create some environmental variables. In your home
-   directory edit the ``.profile`` file.::
-
-    > vi .profile
-
-   In your text editor, add the following text to the bottom of the file::
-					
-    export PATH=$PATH:$HOME/devel/python.git
-    export PYTHONPATH=$PYTHONPATH:$HOME/devel/python.git
-					
 .. note::
+    ``.profile`` is loaded at login, so you will need to logout and login for changes to take place.
 
-    You also need to do this step on the HPC, except the file you need to edit
-    is ``$HOME/.bash_profile``. Add the following::
+1. Open ``$HOME/.profile`` with your favorite text editor and add the following ::
 
-        export PATH=$PATH:$HOME/bin:/scratch/lfs/mcintyre/python.git
-        export PYTHONPATH=$PYTHONPATH:/scratch/lfs/mcintyre/python.git
+    export PATH=$PATH:$HOME/devel/mcscripts
 
+2. Now logout of your computer and log back in. 
 
-2. After you have made these changes you need to logout of your computer and
-   log back in. 
+3. Test that the McIntyre Library can be found by python. ::
    
+   $ bed2fasta.py -h
 
-Congratulations, you now have the python.git repository installed. To test things out, start a python interpreter and type ``import mclib``, if you do not get an error than everything is working.
+If you get the help contents then everything is working.
+
+.. note::
+    If nothing happens, make sure that permissions are set to executable. Run the following command::
+
+       $ find $HOME/devel/mcscript -type f -iname *.py -exec chmod 775 {} \;

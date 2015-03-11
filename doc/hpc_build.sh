@@ -11,7 +11,7 @@ if [[ $HOSTNAME == *ufhpc* ]]; then
 
     module load python/2.7.6
 
-    SOURCE=/scratch/lfs/mcintyre/python.git/doc
+    SOURCE=$(dirname $0)
     TARGET=/bio/mcintyre/mcpublic/mcpython/mcscript
 
 
@@ -32,7 +32,7 @@ if [[ $HOSTNAME == *ufhpc* ]]; then
     make html
 
     # Move to public
-    rsync -av $SOURCE/_build/html $TARGET
+    rsync -av $SOURCE/_build/html/* $TARGET
 
     find $TARGET -type d -exec chmod 775 {} \;
     find $TARGET -type f -exec chmod 664 {} \;
