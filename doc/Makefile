@@ -5,7 +5,7 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
-BUILDDIR      = .build
+BUILDDIR      = _build
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -85,17 +85,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/McIntyrePythonScripts.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/mcscripts.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/McIntyrePythonScripts.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/mcscripts.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/McIntyrePythonScripts"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/McIntyrePythonScripts"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/mcscripts"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/mcscripts"
 	@echo "# devhelp"
 
 epub:
