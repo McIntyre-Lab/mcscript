@@ -13,8 +13,6 @@ Contents:
    :maxdepth: 1
 
    install
-   mclib
-
 
 Indices and tables
 ==================
