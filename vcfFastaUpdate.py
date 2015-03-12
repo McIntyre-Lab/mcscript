@@ -261,7 +261,10 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
             row['chromStart'] = newStart
             row['chromEnd'] = newEnd
             fusID, fusRecord = sliceAndDiceSeq(row, mySeq[chrom])
-            fusions[fusID] = fusRecord
+            if len(fusRecord) > 0:
+                fusions[fusID] = fusRecord
+            else:
+                logger.warn("The exonic region: {0} had a length of 0 and is being ignored.".format(fusID))
     except:
         logger.warn('The chromosome: {0} did not have any fusions associated with it.'.format(chrom))
 
@@ -311,9 +314,9 @@ def main(args):
         logger.info('{0}: Updating sequences'.format(chrom))
         updateSeq(mySeq[chrom], variants[chrom], coordIndex, chrom)
 
+        # If a BED file was provided slice out the coordinates from updated
+        # sequence
         if args.bed:
-            # If a BED file was provided slice out the coordinates from updated
-            # sequence
             logger.info('{0}: Updating BED coordinates'.format(chrom))
             updateBed(coordIndex, chrom, mySeq, myBed, fusions)
     
