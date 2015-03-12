@@ -22,7 +22,6 @@ from mclib import bed as mcbed
 
 def getOptions():
     """ Function to pull in arguments """
-
     description = """ This script takes a VCF file and updates a FASTA file to incorporate variant calls. """
     parser = argparse.ArgumentParser(description=description, formatter_class=RawDescriptionHelpFormatter)
 
@@ -50,14 +49,13 @@ def buildCoordIndex(seqRecord):
     value will be the updated coordinate. 
     
     Arguments:
-    ----------
-    seqRecord (Bio.SeqIO.Seq) = Bio-python SeqIO seq object containing the sequence
-                                for the current chromosome
+        seqRecord (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
+            sequence for the current chromosome
 
     Returns:
-    --------
-    coordIndex (numpy array) = array where the index is the original coordinate
-                               and the value will be updated to the new coordinate.
+        coordIndex (numpy array): array where the index is the original
+            coordinate and the value will be updated to the new coordinate.
+
     """
     bases = len(seqRecord.seq)
     coordIndex = np.arange(0,bases)  
@@ -68,15 +66,15 @@ def buildVariantDict(myVcf, snpsOnly):
     of variants for that chromosomes.
 
     Arguments:
-    ----------
-    myVcf (mclib.vcf2.Vcf object) = an object created using the mclib vcf2 library
+        myVcf (mclib.vcf2.Vcf object): an object created using the mclib vcf2
+            library
     
     Returns:
-    --------
-    variants (dict) = dictionary of variants where key is chromosome and value
-                      is a list of variants organized in a list [position,
-                      reference allele, alternative allele, difference between
-                      ref - alt, length of the reference base]
+        variants (dict): dictionary of variants where key is chromosome and
+            value is a list of variants organized in a list [position,
+            reference allele, alternative allele, difference between ref - alt,
+            length of the reference base]
+
     """
     # Iterate through each record and add to storage dictionary (variants)
     variants = defaultdict(list)
@@ -105,22 +103,19 @@ def buildVariantDict(myVcf, snpsOnly):
     return variants
 
 def force_masking(Seq, chrom, maskBed):
-    """
+    """ Masks positions with N instead of changing them.
     Arguments:
-    ----------
-    Seq (Bio.SeqIO.Seq) = Bio-python SeqIO seq object containing the sequence
-                          for the current chromosome
+        Seq (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
+            sequence for the current chromosome
 
-    chrom (str) = Current chromosome, only used to debug output
+        chrom (str): Current chromosome, only used to debug output
 
-    maskBed (str) = File name for a BED file containing the coordinates to mask
+        maskBed (str): File name for a BED file containing the coordinates to mask
 
     Returns:
-    --------
-    Masks the Seq object in-place, using coordinates provided by maskBed.
+        Masks the Seq object in-place, using coordinates provided by maskBed.
 
     """
-
     # Create a mutable sequence
     mut = Seq.seq.tomutable()
 
@@ -139,16 +134,16 @@ def adjustCoords(varList, coordList):
     prior to the current variant. 
 
     Arguments:
-    ----------
-    varList (list) = List of variants with (position, reference allele,
-                     alternative allele, difference between ref-alt) built from
-                     buildVariantDict function
+        varList (list): List of variants with (position, reference allele,
+            alternative allele, difference between ref-alt) built from
+            buildVariantDict function
 
-    coordIndex (numpy array) = array where the index is the original coordinate
-                               and the value will be updated to the new coordinate.
+        coordIndex (numpy array): array where the index is the original
+            coordinate and the value will be updated to the new coordinate.
+
     Returns:
-    --------
-    Updates the position in-place.
+        Updates the position in-place.
+
     """
     for record in varList:
         delta = record[4]
@@ -160,24 +155,24 @@ def adjustCoords(varList, coordList):
 
 def updateSeq(Seq, varList, coordList, chrom):
     """ Update the genomic sequence given a list of variants
+
     Arguments:
-    ----------
-    Seq (Bio.SeqIO.Seq) = Bio-python SeqIO seq object containing the sequence
-                          for the current chromosome
+        Seq (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
+            sequence for the current chromosome
 
-    varList (list) = List of variants with (position, reference allele,
-                     alternative allele, difference between ref-alt) built from
-                     buildVariantDict function. Coordinates have been updated
-                     by the adjustVarCoords function.
+        varList (list): List of variants with (position, reference allele,
+            alternative allele, difference between ref-alt) built from
+            buildVariantDict function. Coordinates have been updated by the
+            adjustVarCoords function.
 
-    coordIndex (numpy array) = array where the index is the original coordinate
-                               and the value will be updated to the new coordinate.
+        coordIndex (numpy array): array where the index is the original
+            coordinate and the value will be updated to the new coordinate.
 
-    chrom (str) = Current chromosome, only used to debug output
+        chrom (str): Current chromosome, only used to debug output
 
     Returns:
-    --------
-    Updates the Seq object in-place, by adding variants to the sequence.
+        Updates the Seq object in-place, by adding variants to the sequence.
+
     """
     # Create a mutable sequence
     mut = Seq.seq.tomutable()
@@ -188,8 +183,7 @@ def updateSeq(Seq, varList, coordList, chrom):
         newStart = coordList[origStart]
         newEnd = coordList[origEnd]
 
-        if diff == 0:
-            # If a SNP
+        if diff == 0:       # If a SNP
             if mut[newStart] == ref:
                 if args.mask:
                     mut[newStart] = 'N'
@@ -199,16 +193,14 @@ def updateSeq(Seq, varList, coordList, chrom):
                 logger.error('coordinates appear to be off for a SNP')
                 logger.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
                 raise ValueError
-        elif diff > 0:
-            # If a Insertion
+        elif diff > 0:      # If a Insertion
             if mut[newStart:newStart + lref] == ref:
                 mut[newStart:newStart + lref] = alt
             else:
                 logger.error('coordinates appear to be off for a Insertion')
                 logger.debug('Seq ref: {0}, VCF ref: {1}, Chrom: {2} Original Pos: {3} New Pos {4}'.format(mut[newStart], ref, chrom, origStart+1, newStart))
                 raise ValueError
-        elif diff < 0:
-            # If a Deletion
+        elif diff < 0:      # If a Deletion
             if mut[newStart:newStart + lref] == ref:
                 mut[newStart:newStart + lref] = alt
             else:
@@ -220,17 +212,17 @@ def updateSeq(Seq, varList, coordList, chrom):
 
 def sliceAndDiceSeq(bedRow, seqRecord):
     """ Slice out fusions from the genome
-    Arguments:
-    ----------
-    bedRow (mcbed.Bed.BedRow) = An updated row from a bed file
 
-    seqRecord (Bio.SeqIO.Seq) = Bio-python SeqIO seq object containing the sequence
-                                for the current chromosome
+    Arguments:
+        bedRow (mcbed.Bed.BedRow): An updated row from a bed file
+
+        seqRecord (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
+            sequence for the current chromosome
 
     Returns:
-    --------
-    fusRecord (Bio.SeqIO.Seq) = A new Bio-python SeqIO seq object containing the sequence
-                                for the current fusion
+        fusRecord (Bio.SeqIO.Seq): A new Bio-python SeqIO seq object
+            containing the sequence for the current fusion
+
     """
     fusID = bedRow['name']
     fusSeq = seqRecord[bedRow['chromStart']:bedRow['chromEnd']].seq
@@ -242,23 +234,22 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
     region.
 
     Arguments:
-    ----------
-    coordIndex (numpy array) = array where the index is the original coordinate
-                               and the value will be updated to the new coordinate.
+        coordIndex (numpy array): array where the index is the original
+            coordinate and the value will be updated to the new coordinate.
 
-    chrom (str) = Current chromosome, only used to debug output
+        chrom (str): Current chromosome, only used to debug output
 
-    mySeq (Bio.SeqIO) = A dictionary where key is chromosome and the value is a
-                        SeqRecord for that chromosome
+        mySeq (Bio.SeqIO): A dictionary where key is chromosome and the value
+            is a SeqRecord for that chromosome
 
-    myBed (mclab.bed.Bed) = A reader for a Bed file
+        myBed (mclab.bed.Bed): A reader for a Bed file
 
-    fusions (dict) = A dictionary where key is a fusion id and the value is a
-                     fusions SeqRecord
+        fusions (dict): A dictionary where key is a fusion id and the value is
+            a fusions SeqRecord
     
     Returns:
-    --------
-    Updates fusions in place.
+        Updates fusions in place.
+
     """
     try:
         for row in myBed.get_rows(name=chrom):
