@@ -264,7 +264,7 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
             if len(fusRecord) > 0:
                 fusions[fusID] = fusRecord
             else:
-                logger.warn("The exonic region: {0} had a length of 0 and is being ignored.".format(fusID))
+                logger.warn("The exonic region: {0} had a length of 0 [{1}-{2}] and is being ignored.".format(fusID,newStart, newEnd))
     except:
         logger.warn('The chromosome: {0} did not have any fusions associated with it.'.format(chrom))
 
