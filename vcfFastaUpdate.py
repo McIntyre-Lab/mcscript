@@ -409,7 +409,7 @@ def main(args):
     logger.info('Identifying variants and updating genome')
     for chrom in mySeq:
         # If debugging and dchrom is given then only process the given chromosome
-        if args.debug and chrom != args.dchrom:
+        if args.debug and args.dchrom and chrom != args.dchrom:
             logger.debug('Skipping chromosome {0}.'.format(chrom))
             continue
 
