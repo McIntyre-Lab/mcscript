@@ -41,6 +41,7 @@ def getOptions():
 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     parser.add_argument("--debug-chrom", dest="dchrom", action='store', required=False, help="When debugging, select one chromosome to parse.") 
+    parser.add_argument("--debug-fusion", dest="dfus", action='store', required=False, help="When debugging, output information related to this fusion.") 
 
     args = parser.parse_args()
     return(args)
@@ -49,7 +50,7 @@ def buildCoordIndex(seqRecord):
     """ Create a numpy array where the index is the original coordinate and the
     value will be the updated coordinate. 
     
-    Arguments:
+    Args:
         seqRecord (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
             sequence for the current chromosome
 
@@ -62,19 +63,47 @@ def buildCoordIndex(seqRecord):
     coordIndex = np.arange(0,bases)  
     return coordIndex
 
+def debugCoords(dFus, coords, description):
+    """ Output additional debugging information for coordinates array.
+
+    When running debugging I want to be able to output additional information
+    about a specific fusion.
+
+    Args:
+        dFus (obj): Is False when no fusion is passed to --debug-fusion.
+            Otherwise, contains coordinate information about a given fusion.
+
+        coords (list): A list of coordinates, where the index is the original
+            coordinate and the value is the updated coordinate. The original
+            list is from the buildCoordIndex function.
+
+        description (str): A string describing what step we are on.
+
+    Returns:
+        Outputs current value and debug message to STDOUT.
+
+    """
+    if dFus:
+        logger.debug('Printing ' + description + ' for fusion {0} start {1} and end {2}.'.format(dFus.id, 
+            dFus.start, dFus.end))
+        print(coords[dFus.start], coords[dFus.end])
+
 def buildVariantDict(myVcf, snpsOnly):
     """ Build a dictionary where the key is chromosome and the value is a list
     of variants for that chromosomes.
 
-    Arguments:
+    Args:
         myVcf (mclib.vcf2.Vcf object): an object created using the mclib vcf2
             library
     
     Returns:
-        variants (dict): dictionary of variants where key is chromosome and
-            value is a list of variants organized in a list [position,
-            reference allele, alternative allele, difference between ref - alt,
-            length of the reference base]
+        variants (dict): dictionary of variants where: 
+            key is chromosome, values are a list of lists with: 
+            [start, end, reference allele, alternative allele, 
+            difference between alt - ref, length of the reference base]. 
+            
+            For example:
+                {'2L': [[12, 13, 'AAATTA', 'A', -5, 6], [32, 34, 'A', 'T', 0]}
 
     """
     # Iterate through each record and add to storage dictionary (variants)
@@ -103,9 +132,35 @@ def buildVariantDict(myVcf, snpsOnly):
 
     return variants
 
+def debugVariants(dFus, variants):
+    """ Print the variants located within a fusion 
+    Args:
+        dFus (obj): Is False when no fusion is passed to --debug-fusion.
+            Otherwise, contains coordinate information about a given fusion.
+
+        variants (dict): Dictionary of variants created by buildVariantDict function.
+
+    """
+    if dFus:
+        logger.debug('Printing variant information for fusion {0} start {1} and end {2}.'.format(dFus.id, dFus.start, dFus.end))
+        positions = set(range(dFus.start, dFus.end))
+        for variant in variants[dFus.chrom]:
+            pos = variant[0]
+            diff = variant[4]
+
+            if diff == 0:
+                locs  = set(pos)
+            elif diff > 0:
+                locs = set(range(pos, pos + diff))
+            else:
+                locs = set(range(pos - diff, pos))
+
+            if positions.intersection(locs):
+                print(variant)
+
 def force_masking(Seq, chrom, maskBed):
     """ Masks positions with N instead of changing them.
-    Arguments:
+    Args:
         Seq (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
             sequence for the current chromosome
 
@@ -131,25 +186,26 @@ def force_masking(Seq, chrom, maskBed):
     Seq.seq = mut.toseq()
 
 def adjustCoords(varList, coordList):
-    """ Adjust the variant coordinates from a given location due to indels
-    prior to the current variant. 
+    """ Adjust the variant coordinates. 
+    
+    To correct for coordinate changes due to indels, cycle through each
+    variant and update coordinate locations for all downstream variants. 
 
-    Arguments:
+    Args:
         varList (list): List of variants with (position, reference allele,
             alternative allele, difference between ref-alt) built from
             buildVariantDict function
 
-        coordIndex (numpy array): array where the index is the original
+        coordList (numpy array): array where the index is the original
             coordinate and the value will be updated to the new coordinate.
 
     Returns:
-        Updates the position in-place.
+        Updates position in coordList (numpy array).
 
     """
     for record in varList:
         delta = record[4]
-        if delta != 0:
-            # Don't adjust coordinates for SNPs
+        if delta != 0:      # Don't adjust coordinates for SNPs
             start = record[0]
             lref = record[5]
             coordList[start+lref:] = coordList[start+lref:] + delta
@@ -157,7 +213,7 @@ def adjustCoords(varList, coordList):
 def updateSeq(Seq, varList, coordList, chrom):
     """ Update the genomic sequence given a list of variants
 
-    Arguments:
+    Args:
         Seq (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
             sequence for the current chromosome
 
@@ -214,7 +270,7 @@ def updateSeq(Seq, varList, coordList, chrom):
 def sliceAndDiceSeq(bedRow, seqRecord):
     """ Slice out fusions from the genome
 
-    Arguments:
+    Args:
         bedRow (mcbed.Bed.BedRow): An updated row from a bed file
 
         seqRecord (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
@@ -234,7 +290,7 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
     """ Take a bed file and update it coordinate and then slice the genomic
     region.
 
-    Arguments:
+    Args:
         coordIndex (numpy array): array where the index is the original
             coordinate and the value will be updated to the new coordinate.
 
@@ -271,11 +327,35 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
 
 def main(args):
     ################################################################################
+    # Import Bed File
+    ################################################################################
+    fusions = dict()
+    if args.bed:
+        logger.info('Importing BED: %s' % args.bed)
+        myBed = mcbed.Bed(args.bed)
+    else:
+        pass
+
+    # When debugging with a test fusion, grab fusions information from BED file
+    if args.debug and args.dfus and args.bed:
+        logger.debug('Will print additional information about fusion {}.'.format(args.dfus))
+        dFus = myBed.get_rows(args.dfus)[0]
+        print dFus
+        dFus.chrom = dFus[0]
+        dFus.start = dFus[1]
+        dFus.end = dFus[2]
+        dFus.id = dFus[3]
+        args.dchrom = dFus.chrom
+    else:
+        dFus = False
+
+    ################################################################################
     # Import VCF information
     ################################################################################
     logger.info('Importing VCF information: %s' % args.vcfName)
     myVcf = mcvcf.Vcf(args.vcfName)
     variants = buildVariantDict(myVcf, args.snpsOnly)
+    debugVariants(dFus, variants)
 
     if args.snpsOnly:
         logger.info('You are running in SNPONLY mode, remove --snps_only flag to include indels')
@@ -291,30 +371,23 @@ def main(args):
             force_masking(mySeq[chrom], args.fmask)
 
     ################################################################################
-    # Import Bed File
-    ################################################################################
-    fusions = dict()
-    if args.bed:
-        logger.info('Importing BED: %s' % args.bed)
-        myBed = mcbed.Bed(args.bed)
-    else:
-        pass
-
-    ################################################################################
     # Iterate through the chromosomes and update the genome
     ################################################################################
     logger.info('Identifying variants and updating genome')
     for chrom in mySeq:
         # If debugging and dchrom is given then only process the given chromosome
         if args.debug and chrom != args.dchrom:
+            logger.debug('Skipping chromosome {0}.'.format(chrom))
             continue
 
         logger.info('{0}: Building coordinate Index'.format(chrom))
         coordIndex = buildCoordIndex(mySeq[chrom])
+        debugCoords(dFus, coordIndex, 'Initial coordinates')
 
         if not args.snpsOnly:
             logger.info('{0}: Adjusting coordinates'.format(chrom))
             adjustCoords(variants[chrom], coordIndex)
+            debugCoords(dFus, coordIndex, 'Adjusted coordinates')
 
         logger.info('{0}: Updating sequences'.format(chrom))
         updateSeq(mySeq[chrom], variants[chrom], coordIndex, chrom)
