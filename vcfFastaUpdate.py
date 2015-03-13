@@ -41,7 +41,7 @@ def getOptions():
 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     parser.add_argument("--debug-chrom", dest="dchrom", action='store', required=False, help="When debugging, select one chromosome to parse.") 
-    parser.add_argument("--debug-fusion", dest="dfus", action='store', required=False, help="When debugging, output information related to this fusion.") 
+    parser.add_argument("--debug-exon", dest="dfus", action='store', required=False, help="When debugging, output information related to this exonic region.") 
 
     args = parser.parse_args()
     return(args)
@@ -89,10 +89,11 @@ def buildVariantDict(myVcf, snpsOnly):
     return variants
 
 def debugVariants(dFus, variants):
-    """ Print the variants located within a fusion 
+    """ Print the variants located within a exonic region. 
+
     Args:
-        dFus (obj): Is False when no fusion is passed to --debug-fusion.
-            Otherwise, contains coordinate information about a given fusion.
+        dFus (obj): Is False when no exonID is passed to --debug-exon.
+            Otherwise, contains coordinate information about a given exonic region.
 
         variants (dict): Dictionary of variants created by buildVariantDict function.
 
@@ -108,7 +109,7 @@ def debugVariants(dFus, variants):
                 locs = set(range(pos, pos + lref))
 
             if positions & locs:
-                logger.debug('Printing variant information for fusion {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end,variant))
+                logger.debug('Printing variant information for exonic region {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end,variant))
 
 def force_masking(Seq, chrom, maskBed):
     """ Masks positions with N instead of changing them.
@@ -164,11 +165,11 @@ def debugCoords(dFus, coords, description):
     """ Output additional debugging information for coordinates array.
 
     When running debugging I want to be able to output additional information
-    about a specific fusion.
+    about a specific exonic regions.
 
     Args:
-        dFus (obj): Is False when no fusion is passed to --debug-fusion.
-            Otherwise, contains coordinate information about a given fusion.
+        dFus (obj): Is False when no exonID is passed to --debug-exon.
+            Otherwise, contains coordinate information about a given exonic region.
 
         coords (list): A list of coordinates, where the index is the original
             coordinate and the value is the updated coordinate. The original
@@ -181,7 +182,7 @@ def debugCoords(dFus, coords, description):
 
     """
     if dFus:
-        logger.debug(description + ' for fusion {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end,[coords[dFus.start], coords[dFus.end]]))
+        logger.debug(description + ' for exonic region {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end,[coords[dFus.start], coords[dFus.end]]))
 
 def adjustCoords(variants, coordList, delMask):
     """ Adjust the variant coordinates. 
@@ -212,11 +213,11 @@ def debugMask(dFus, delMask):
     """ Output additional debugging information for mask array.
 
     When running debugging I want to be able to deletion masking from a
-    specific fusion.
+    specific exonic region.
 
     Args:
-        dFus (obj): Is False when no fusion is passed to --debug-fusion.
-            Otherwise, contains coordinate information about a given fusion.
+        dFus (obj): Is False when no exonID is passed to --debug-exon.
+            Otherwise, contains coordinate information about a given exonic region.
 
         delMask (list): A list of 0|1 for the entire length of the chromosome.
             A 1 represents that base was deleted.
@@ -227,7 +228,7 @@ def debugMask(dFus, delMask):
 
     """
     if dFus:
-        logger.debug('Masked Array for fusion {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end, delMask[dFus.start:dFus.end]))
+        logger.debug('Masked Array for exonic region {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end, delMask[dFus.start:dFus.end]))
 
 def updateSeq(Seq, variants, coordList, chrom):
     """ Update the genomic sequence given a list of variants
@@ -286,7 +287,7 @@ def updateSeq(Seq, variants, coordList, chrom):
     Seq.seq = mut.toseq()
 
 def sliceAndDiceSeq(bedRow, seqRecord):
-    """ Slice out fusions from the genome
+    """ Slice out exonic regions from the genome
 
     Args:
         bedRow (mcbed.Bed.BedRow): An updated row from a bed file
@@ -296,7 +297,7 @@ def sliceAndDiceSeq(bedRow, seqRecord):
 
     Returns:
         fusRecord (Bio.SeqIO.Seq): A new Bio-python SeqIO seq object
-            containing the sequence for the current fusion
+            containing the sequence for the current exonic region.
 
     """
     fusID = bedRow['name']
@@ -322,8 +323,8 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
 
         myBed (mclab.bed.Bed): A reader for a Bed file
 
-        fusions (dict): A dictionary where key is a fusion id and the value is
-            a fusions SeqRecord
+        fusions (dict): A dictionary where key is a exonic region id and the value is
+            a exonic regions SeqRecord
     
     Returns:
         Updates fusions in place.
@@ -333,7 +334,7 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
         for row in myBed.get_rows(name=chrom):
             chrom, start, end, id = row
 
-            # Move fusion start position up if it was deleted
+            # Move exonic region start position up if it was deleted
             upStart = start
             flagDel = True
             while flagDel:
@@ -343,7 +344,12 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
                     upStart += 1
 
             if upStart != start:
-                logger.warn('Fusion {0} had the start position {1} incremented to {2}, because it was deleted.'.format(id, start, upStart))
+                logger.warn('Exonic Region {0} had the start position {1} incremented to {2}, because it was deleted.'.format(id, start, upStart))
+
+            # If start value is greater than end, skip the exonic region
+            if upStart >= end:
+                logger.warn('Exonic Region {0} was deleted {1}:{2}--{3}.'.format(id, chrom, upStart, end))
+                continue
 
             newStart = coordIndex[upStart]
             newEnd = coordIndex[end]
@@ -356,7 +362,7 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
             else:
                 logger.warn("The exonic region: {0} had a length of 0 [{1}-{2}] and is being ignored.".format(fusID,newStart, newEnd))
     except:
-        logger.warn('The chromosome: {0} did not have any fusions associated with it.'.format(chrom))
+        logger.warn('The chromosome: {0} did not have any exonic regions associated with it.'.format(chrom))
 
 def main(args):
     ################################################################################
@@ -369,7 +375,7 @@ def main(args):
     else:
         pass
 
-    # When debugging with a test fusion, grab fusions information from BED file
+    # When debugging with a test exonID, grab exonic region information from BED file
     if args.debug and args.dfus and args.bed:
         dFus = myBed.get_rows(args.dfus)[0]
         dFus.chrom = dFus[0]
@@ -377,7 +383,7 @@ def main(args):
         dFus.end = dFus[2]
         dFus.id = dFus[3]
         args.dchrom = dFus.chrom
-        logger.debug('Printing additional information for fusion: {0}'.format((dFus.id, dFus.chrom, dFus.start, dFus.end)))
+        logger.debug('Printing additional information for exonic region: {0}'.format((dFus.id, dFus.chrom, dFus.start, dFus.end)))
     else:
         dFus = False
 
@@ -435,8 +441,8 @@ def main(args):
     # Output Updated FASTA file
     ################################################################################
     if fusions:
-        # If there are fusions (i.e. if a bed file) then output fusions.
-        logger.info('Outputing updated fusions')
+        # If there are exonic regions (i.e. if a bed file) then output exonic regions FASTA.
+        logger.info('Outputing updated exonic regions')
         myOut = fusions
     else:
         logger.info('Outputing updated genome')
