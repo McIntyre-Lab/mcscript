@@ -40,6 +40,7 @@ def getOptions():
     group3.add_argument("--snps_only", dest="snpsOnly", action='store_true', required=False, help="Only update SNPs, ignore indels. Indels take significantly longer to run. [Optional]")
 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
+    parser.add_argument("--debug-chrom", dest="dchrom", action='store', required=False, help="When debugging, select one chromosome to parse.") 
 
     args = parser.parse_args()
     return(args)
@@ -304,6 +305,10 @@ def main(args):
     ################################################################################
     logger.info('Identifying variants and updating genome')
     for chrom in mySeq:
+        # If debugging and dchrom is given then only process the given chromosome
+        if args.debug and chrom != args.dchrom:
+            continue
+
         logger.info('{0}: Building coordinate Index'.format(chrom))
         coordIndex = buildCoordIndex(mySeq[chrom])
 
