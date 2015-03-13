@@ -331,8 +331,7 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
     """
     try:
         for row in myBed.get_rows(name=chrom):
-            start = row['chromStart']
-            end = row['chromEnd']
+            chrom, start, end, id = row
 
             # Move fusion start position up if it was deleted
             upStart = start
@@ -344,7 +343,7 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
                     upStart += 1
 
             if upStart != start:
-                logger.warn('Incremented start position {0} to {1} because it was deleted.'.format(start, upStart))
+                logger.warn('Fusion {0} had the start position {1} incremented to {2}, because it was deleted.'.format(id, start, upStart))
 
             newStart = coordIndex[upStart]
             newEnd = coordIndex[end]
