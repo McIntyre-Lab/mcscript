@@ -357,10 +357,11 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
             row['chromStart'] = newStart
             row['chromEnd'] = newEnd
             fusID, fusRecord = sliceAndDiceSeq(row, mySeq[chrom])
-            if len(fusRecord) > 0:
-                fusions[fusID] = fusRecord
-            else:
-                logger.warn("The exonic region: {0} had a length of 0 [{1}-{2}] and is being ignored.".format(fusID,newStart, newEnd))
+            fusions[fusID] = fusRecord
+
+            if len(fusRecord) <= 0:
+                logger.error("Something is wrong with exonic region: {0}. Try running script with `--debug --debug-exon {0}`".format(fusID))
+                raise ValueError
     except:
         logger.warn('The chromosome: {0} did not have any exonic regions associated with it.'.format(chrom))
 
@@ -455,6 +456,10 @@ def main(args):
 if __name__ == '__main__':
     # Turn on Logging if option -g was given
     args = getOptions()
+
+    # Turn debugging if any debug flags are given
+    if args.dchrom or args.dfus:
+        args.debug = True
 
     # Turn on logging
     logger = logging.getLogger()
