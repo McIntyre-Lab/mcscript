@@ -344,7 +344,7 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
                     upStart += 1
 
             if upStart != start:
-                logger.debug('Incremented start position {0} to {1} because it was deleted.'.format(start, upStart))
+                logger.warn('Incremented start position {0} to {1} because it was deleted.'.format(start, upStart))
 
             newStart = coordIndex[upStart]
             newEnd = coordIndex[end]
