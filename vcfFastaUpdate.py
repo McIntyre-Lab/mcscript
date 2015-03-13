@@ -36,8 +36,8 @@ def getOptions():
 
     group3 = parser.add_argument_group(description="SNP options")
     group3.add_argument("--mask", dest="mask", action='store_true', required=False, help="Mask SNPs with 'N' instead of updating reference. [Optional]")
-    group3.add_argument("--force_mask", dest="fmask", action='store', required=False, help="Given a BED file of regions, these regions will be masked with 'N' before updating the reference. [Optional]")
-    group3.add_argument("--snps_only", dest="snpsOnly", action='store_true', required=False, help="Only update SNPs, ignore indels. Indels take significantly longer to run. [Optional]")
+    group3.add_argument("--force-mask", dest="fmask", action='store', required=False, help="Given a BED file of regions, these regions will be masked with 'N' before updating the reference. [Optional]")
+    group3.add_argument("--snps-only", dest="snpsOnly", action='store_true', required=False, help="Only update SNPs, ignore indels. Indels take significantly longer to run. [Optional]")
 
     parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
     parser.add_argument("--debug-chrom", dest="dchrom", action='store', required=False, help="When debugging, select one chromosome to parse.") 
@@ -45,48 +45,6 @@ def getOptions():
 
     args = parser.parse_args()
     return(args)
-
-def buildCoordIndex(seqRecord):
-    """ Create a numpy array where the index is the original coordinate and the
-    value will be the updated coordinate. 
-    
-    Args:
-        seqRecord (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
-            sequence for the current chromosome
-
-    Returns:
-        coordIndex (numpy array): array where the index is the original
-            coordinate and the value will be updated to the new coordinate.
-
-    """
-    bases = len(seqRecord.seq)
-    coordIndex = np.arange(0,bases)  
-    return coordIndex
-
-def debugCoords(dFus, coords, description):
-    """ Output additional debugging information for coordinates array.
-
-    When running debugging I want to be able to output additional information
-    about a specific fusion.
-
-    Args:
-        dFus (obj): Is False when no fusion is passed to --debug-fusion.
-            Otherwise, contains coordinate information about a given fusion.
-
-        coords (list): A list of coordinates, where the index is the original
-            coordinate and the value is the updated coordinate. The original
-            list is from the buildCoordIndex function.
-
-        description (str): A string describing what step we are on.
-
-    Returns:
-        Outputs current value and debug message to STDOUT.
-
-    """
-    if dFus:
-        logger.debug('Printing ' + description + ' for fusion {0} start {1} and end {2}.'.format(dFus.id, 
-            dFus.start, dFus.end))
-        print(coords[dFus.start], coords[dFus.end])
 
 def buildVariantDict(myVcf, snpsOnly):
     """ Build a dictionary where the key is chromosome and the value is a list
@@ -99,11 +57,11 @@ def buildVariantDict(myVcf, snpsOnly):
     Returns:
         variants (dict): dictionary of variants where: 
             key is chromosome, values are a list of lists with: 
-            [start, end, reference allele, alternative allele, 
+            [start, reference allele, alternative allele, 
             difference between alt - ref, length of the reference base]. 
             
             For example:
-                {'2L': [[12, 13, 'AAATTA', 'A', -5, 6], [32, 34, 'A', 'T', 0]}
+                {'2L': [[12, 'AAATTA', 'A', -5, 6], [32, 'A', 'T', 0, 1]}
 
     """
     # Iterate through each record and add to storage dictionary (variants)
@@ -121,14 +79,12 @@ def buildVariantDict(myVcf, snpsOnly):
         altbase = str(record.ALT[0])
         lalt = len(altbase)
         diff = lalt - lref
-        end = start + lref + diff      # End is not really necessary until we start slicing bed files
-        if snpsOnly:
-            # If snpsOnly is on, only add SNPs, ie when diff = 0
+
+        if snpsOnly:    # If snpsOnly is on, only add SNPs, ie when diff = 0
             if diff == 0:
-                variants[record.CHROM].append([start, end, refbase, altbase, diff, lref])
-        else:
-            # Else add all variants
-            variants[record.CHROM].append([start, end, refbase, altbase, diff, lref])
+                variants[record.CHROM].append([start, refbase, altbase, diff, lref])
+        else:   # Else add all variants
+            variants[record.CHROM].append([start, refbase, altbase, diff, lref])
 
     return variants
 
@@ -142,21 +98,17 @@ def debugVariants(dFus, variants):
 
     """
     if dFus:
-        logger.debug('Printing variant information for fusion {0} start {1} and end {2}.'.format(dFus.id, dFus.start, dFus.end))
         positions = set(range(dFus.start, dFus.end))
         for variant in variants[dFus.chrom]:
-            pos = variant[0]
-            diff = variant[4]
+            pos, ref, alt, diff, lref = variant
 
             if diff == 0:
-                locs  = set(pos)
-            elif diff > 0:
-                locs = set(range(pos, pos + diff))
+                locs  = set([pos,])
             else:
-                locs = set(range(pos - diff, pos))
+                locs = set(range(pos, pos + lref))
 
-            if positions.intersection(locs):
-                print(variant)
+            if positions & locs:
+                logger.debug('Printing variant information for fusion {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end,variant))
 
 def force_masking(Seq, chrom, maskBed):
     """ Masks positions with N instead of changing them.
@@ -185,14 +137,60 @@ def force_masking(Seq, chrom, maskBed):
         mut = mut[start:end] = 'N'
     Seq.seq = mut.toseq()
 
-def adjustCoords(varList, coordList):
+def buildCoordIndex(seqRecord):
+    """ Create chromosome coordinate array.
+    
+    Create a numpy array where the index is the original coordinate and the
+    value will be the updated coordinate. 
+    
+    Args:
+        seqRecord (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
+            sequence for the current chromosome
+
+    Returns:
+        coordIndex (numpy array): array where the index is the original
+            coordinate and the value will be updated to the new coordinate.
+
+        delMask (numpy array): array with a 0 for each position in the genome.
+            0 will be updated to 1 if there was a deletion at that position.
+
+    """
+    bases = len(seqRecord.seq)
+    coordIndex = np.arange(0,bases)  
+    delMask = np.zeros(bases)
+    return coordIndex, delMask
+
+def debugCoords(dFus, coords, description):
+    """ Output additional debugging information for coordinates array.
+
+    When running debugging I want to be able to output additional information
+    about a specific fusion.
+
+    Args:
+        dFus (obj): Is False when no fusion is passed to --debug-fusion.
+            Otherwise, contains coordinate information about a given fusion.
+
+        coords (list): A list of coordinates, where the index is the original
+            coordinate and the value is the updated coordinate. The original
+            list is from the buildCoordIndex function.
+
+        description (str): A string describing what step we are on.
+
+    Returns:
+        Outputs current value and debug message to STDOUT.
+
+    """
+    if dFus:
+        logger.debug(description + ' for fusion {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end,[coords[dFus.start], coords[dFus.end]]))
+
+def adjustCoords(variants, coordList, delMask):
     """ Adjust the variant coordinates. 
     
     To correct for coordinate changes due to indels, cycle through each
     variant and update coordinate locations for all downstream variants. 
 
     Args:
-        varList (list): List of variants with (position, reference allele,
+        variants (list): List of variants with (position, reference allele,
             alternative allele, difference between ref-alt) built from
             buildVariantDict function
 
@@ -203,21 +201,42 @@ def adjustCoords(varList, coordList):
         Updates position in coordList (numpy array).
 
     """
-    for record in varList:
-        delta = record[4]
-        if delta != 0:      # Don't adjust coordinates for SNPs
-            start = record[0]
-            lref = record[5]
-            coordList[start+lref:] = coordList[start+lref:] + delta
+    for variant in variants:
+        start, ref, alt, diff, lref = variant
+        if diff != 0:      # Don't adjust coordinates for SNPs
+            coordList[start + lref:] = coordList[start + lref:] + diff
+            if diff < 0:    # Mask deletions
+                delMask[start + len(alt):start + lref] = 1
 
-def updateSeq(Seq, varList, coordList, chrom):
+def debugMask(dFus, delMask):
+    """ Output additional debugging information for mask array.
+
+    When running debugging I want to be able to deletion masking from a
+    specific fusion.
+
+    Args:
+        dFus (obj): Is False when no fusion is passed to --debug-fusion.
+            Otherwise, contains coordinate information about a given fusion.
+
+        delMask (list): A list of 0|1 for the entire length of the chromosome.
+            A 1 represents that base was deleted.
+
+    Returns:
+        List of positions, where 1 indicates a deletion has taken place at that
+            position. 
+
+    """
+    if dFus:
+        logger.debug('Masked Array for fusion {0}:{1}--{2}.\n{3}\n'.format(dFus.id, dFus.start, dFus.end, delMask[dFus.start:dFus.end]))
+
+def updateSeq(Seq, variants, coordList, chrom):
     """ Update the genomic sequence given a list of variants
 
     Args:
         Seq (Bio.SeqIO.Seq): Bio-python SeqIO seq object containing the
             sequence for the current chromosome
 
-        varList (list): List of variants with (position, reference allele,
+        variants (list): List of variants with (position, reference allele,
             alternative allele, difference between ref-alt) built from
             buildVariantDict function. Coordinates have been updated by the
             adjustVarCoords function.
@@ -235,10 +254,9 @@ def updateSeq(Seq, varList, coordList, chrom):
     mut = Seq.seq.tomutable()
 
     # Iterate through variants and update
-    for var in varList:
-        origStart, origEnd, ref, alt, diff, lref = var
+    for variant in variants:
+        origStart, ref, alt, diff, lref = variant
         newStart = coordList[origStart]
-        newEnd = coordList[origEnd]
 
         if diff == 0:       # If a SNP
             if mut[newStart] == ref:
@@ -286,13 +304,16 @@ def sliceAndDiceSeq(bedRow, seqRecord):
     fusRecord = SeqRecord(fusSeq, id=fusID, description='')
     return fusID, fusRecord
 
-def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
+def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
     """ Take a bed file and update it coordinate and then slice the genomic
     region.
 
     Args:
         coordIndex (numpy array): array where the index is the original
             coordinate and the value will be updated to the new coordinate.
+
+        delMask (list): A list of 0|1 for the entire length of the chromosome.
+            A 1 represents that base was deleted.
 
         chrom (str): Current chromosome, only used to debug output
 
@@ -312,7 +333,20 @@ def updateBed(coordIndex, chrom, mySeq, myBed, fusions):
         for row in myBed.get_rows(name=chrom):
             start = row['chromStart']
             end = row['chromEnd']
-            newStart = coordIndex[start]
+
+            # Move fusion start position up if it was deleted
+            upStart = start
+            flagDel = True
+            while flagDel:
+                if delMask[upStart] == 0:
+                    flagDel = False
+                else:
+                    upStart += 1
+
+            if upStart != start:
+                logger.debug('Incremented start position {0} to {1} because it was deleted.'.format(start, upStart))
+
+            newStart = coordIndex[upStart]
             newEnd = coordIndex[end]
 
             row['chromStart'] = newStart
@@ -338,14 +372,13 @@ def main(args):
 
     # When debugging with a test fusion, grab fusions information from BED file
     if args.debug and args.dfus and args.bed:
-        logger.debug('Will print additional information about fusion {}.'.format(args.dfus))
         dFus = myBed.get_rows(args.dfus)[0]
-        print dFus
         dFus.chrom = dFus[0]
         dFus.start = dFus[1]
         dFus.end = dFus[2]
         dFus.id = dFus[3]
         args.dchrom = dFus.chrom
+        logger.debug('Printing additional information for fusion: {0}'.format((dFus.id, dFus.chrom, dFus.start, dFus.end)))
     else:
         dFus = False
 
@@ -358,7 +391,7 @@ def main(args):
     debugVariants(dFus, variants)
 
     if args.snpsOnly:
-        logger.info('You are running in SNPONLY mode, remove --snps_only flag to include indels')
+        logger.info('You are running in SNPONLY mode, remove --snps-only flag to include indels')
 
     ################################################################################
     # Import FASTA
@@ -381,13 +414,14 @@ def main(args):
             continue
 
         logger.info('{0}: Building coordinate Index'.format(chrom))
-        coordIndex = buildCoordIndex(mySeq[chrom])
+        coordIndex, delMask = buildCoordIndex(mySeq[chrom])
         debugCoords(dFus, coordIndex, 'Initial coordinates')
 
         if not args.snpsOnly:
             logger.info('{0}: Adjusting coordinates'.format(chrom))
-            adjustCoords(variants[chrom], coordIndex)
+            adjustCoords(variants[chrom], coordIndex, delMask)
             debugCoords(dFus, coordIndex, 'Adjusted coordinates')
+            debugMask(dFus, delMask)
 
         logger.info('{0}: Updating sequences'.format(chrom))
         updateSeq(mySeq[chrom], variants[chrom], coordIndex, chrom)
@@ -396,7 +430,7 @@ def main(args):
         # sequence
         if args.bed:
             logger.info('{0}: Updating BED coordinates'.format(chrom))
-            updateBed(coordIndex, chrom, mySeq, myBed, fusions)
+            updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions)
     
     ################################################################################
     # Output Updated FASTA file
