@@ -388,8 +388,11 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
         Updates fusions in place.
 
     """
-    try:
-        for row in myBed.get_rows(name=chrom):
+
+    rows = myBed.get_rows(name=chrom)
+
+    if rows:
+        for row in rows:
             chrom, start, end, id = row
 
             # Increment start value if it was deleted by an indel
@@ -413,7 +416,7 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
 
             if len(fusRecord) <= 0:
                 logger.error("Something is wrong with exonic region: {0}. Try running script with `--debug --debug-exon {0}`".format(fusID))
-    except:
+    else:
         logger.warn('The chromosome: {0} did not have any exonic regions associated with it.'.format(chrom))
 
 def main(args):
