@@ -305,6 +305,64 @@ def sliceAndDiceSeq(bedRow, seqRecord):
     fusRecord = SeqRecord(fusSeq, id=fusID, description='')
     return fusID, fusRecord
 
+def incStart(id, start, delMask):
+    """ Increment the start position if it was deleted.
+
+    Args:
+        id (str): Exonic region id.
+
+        start (int): start position of a exonic region.
+
+        delMask (list): A list of 0|1 for the entire length of the chromosome.
+            A 1 represents that base was deleted.
+
+    Returns:
+        upStart (int): Incremented start position.
+
+    """
+    upStart = start
+    flagDel = True
+
+    while flagDel:
+        if delMask[upStart] == 0:
+            flagDel = False
+        else:
+            upStart += 1
+
+    if upStart != start:
+        logger.warn('Exonic Region {0} had the start position {1} incremented to {2}, because it was deleted.'.format(id, start, upStart))
+
+    return upStart
+
+def decEnd(id, end, delMask):
+    """ Decrement the end position if it was deleted.
+
+    Args:
+        id (str): Exonic region id.
+
+        end (int): end position of a exonic region.
+
+        delMask (list): A list of 0|1 for the entire length of the chromosome.
+            A 1 represents that base was deleted.
+
+    Returns:
+        downDend (int): Decremented end position.
+
+    """
+    downEnd = end
+    flagDel = True
+
+    while flagDel:
+        if delMask[upStart] == 0:
+            flagDel = False
+        else:
+            downEnd -= 1
+
+    if downEnd != end:
+        logger.warn('Exonic Region {0} had the end position {1} decremented to {2}, because it was deleted.'.format(id, end, downEnd))
+
+    return downEnd
+
 def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
     """ Take a bed file and update it coordinate and then slice the genomic
     region.
@@ -334,25 +392,19 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
         for row in myBed.get_rows(name=chrom):
             chrom, start, end, id = row
 
-            # Move exonic region start position up if it was deleted
-            upStart = start
-            flagDel = True
-            while flagDel:
-                if delMask[upStart] == 0:
-                    flagDel = False
-                else:
-                    upStart += 1
+            # Increment start value if it was deleted by an indel
+            upStart = incStart(id, start, delMask)
 
-            if upStart != start:
-                logger.warn('Exonic Region {0} had the start position {1} incremented to {2}, because it was deleted.'.format(id, start, upStart))
+            # Decrement end value if it was deleted by an indel
+            downEnd = decEnd(id, end, delMask)
 
             # If start value is greater than end, skip the exonic region
-            if upStart >= end:
-                logger.warn('Exonic Region {0} was deleted {1}:{2}--{3}.'.format(id, chrom, upStart, end))
+            if upStart >= downEnd:
+                logger.warn('Exonic Region {0} was deleted {1}:{2}--{3}.'.format(id, chrom, upStart, downEnd))
                 continue
 
             newStart = coordIndex[upStart]
-            newEnd = coordIndex[end]
+            newEnd = coordIndex[downEnd]
 
             row['chromStart'] = newStart
             row['chromEnd'] = newEnd
@@ -361,7 +413,6 @@ def updateBed(coordIndex, delMask, chrom, mySeq, myBed, fusions):
 
             if len(fusRecord) <= 0:
                 logger.error("Something is wrong with exonic region: {0}. Try running script with `--debug --debug-exon {0}`".format(fusID))
-                raise ValueError
     except:
         logger.warn('The chromosome: {0} did not have any exonic regions associated with it.'.format(chrom))
 
