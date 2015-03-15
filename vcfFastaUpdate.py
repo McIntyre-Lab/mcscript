@@ -353,7 +353,7 @@ def decEnd(id, end, delMask):
     flagDel = True
 
     while flagDel:
-        if delMask[upStart] == 0:
+        if delMask[downEnd] == 0:
             flagDel = False
         else:
             downEnd -= 1
