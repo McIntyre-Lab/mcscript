@@ -46,7 +46,7 @@ def main(args):
 
     # Open output
     OUT = open(args.oname, 'w')
-    OUT.write('fusion_ID,num_snps,num_indels,total\n')
+    OUT.write('regionID,num_snps,num_indels,total\n')
 
     # Iterate over bed regions and pull SNPs
     for chrom, start, end, region in bed:
