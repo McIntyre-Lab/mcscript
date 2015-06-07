@@ -10,8 +10,8 @@ import sys
 import numpy as np
 
 # McLab Packages
-import mclib
-from mclib import gff as mcgff
+import mclib_Python as mclib
+from mclib_Python import gff as mcgff
 
 def getOptions():
     """ Function to pull in arguments """

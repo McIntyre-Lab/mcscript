@@ -13,11 +13,11 @@ import matplotlib
 matplotlib.use('Agg')
 
 # McLab Packages
-import mclib
-from mclib import bam as mcbam
-from mclib import gff as mcgff
-from mclib import vcf2 as mcvcf
-from mclib import wiggle as mcwiggle
+import mclib_Python as mclib
+from mclib_Python import bam as mcbam
+from mclib_Python import gff as mcgff
+from mclib_Python import vcf2 as mcvcf
+from mclib_Python import wiggle as mcwiggle
 
 # TODO: Add ability to make overlapping wiggle when up to XX groups are given
 

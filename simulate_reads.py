@@ -11,7 +11,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import SingleLetterAlphabet
 
 # McLab Packages
-import mclib
+import mclib_Python as mclib
 
 def getOptions():
     """Function to pull in command line arguments"""

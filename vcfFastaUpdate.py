@@ -16,9 +16,9 @@ from Bio.SeqRecord import SeqRecord
 import numpy as np
 
 # McLab Packages
-import mclib
-from mclib import vcf2 as mcvcf
-from mclib import bed as mcbed
+import mclib_Python as mclib
+from mclib_Python import vcf2 as mcvcf
+from mclib_Python import bed as mcbed
 
 def getOptions():
     """ Function to pull in arguments """

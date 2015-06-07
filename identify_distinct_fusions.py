@@ -12,7 +12,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 
 # McLab packages
-import mclib
+import mclib_Python as mclib
 
 def getOptions():
     """ Function to pull in arguments """

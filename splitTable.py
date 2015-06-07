@@ -6,7 +6,7 @@ import os.path
 import logging
 
 # McLab Packages
-import mclib
+import mclib_Python as mclib
 
 def getOptions():
     """ Function to pull in arguments """

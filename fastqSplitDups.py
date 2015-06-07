@@ -13,7 +13,7 @@ import logging
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
 # McLab Libraries
-import mclib
+import mclib_Python as mclib
 
 def getOptions():
     """ Function to pull in arguments """
