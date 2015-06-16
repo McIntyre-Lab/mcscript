@@ -75,13 +75,13 @@ def defineRegion(index, junctionArray):
 def testOverlap(e1, e2):
     # Sanity check to make sure exons are the same
     if e1.chrom == e2.chrom:
-        if (e1.start <= e2.start and e1.end >= e2.end) or (e2.start <= e1.start and e2.end >= e1.start):  # They overlap
+        if e1.start <= e2.start and e1.end >= e2.start:  # They overlap
             return True
         else:
             return False
     else:
-        print "Exons are not the same"
-        return True  # return True to not run
+        print "Exons {0} and {1} are not on the same chromosome, something is wrong.".format(e1.id, e2.id)
+        raise Exception
 
 
 def main():
@@ -91,12 +91,11 @@ def main():
     genes = db.features_of_type('gene', order_by='start')
 
     # Open the output BED file
-    with open('test_junctions.bed', 'wb') as outputFile:
+    with open(args.outputFile, 'wb') as outputFile:
         for gene in genes:
 
             # Get all exons
-            exonList = list(db.children(gene, featuretype='exon'))
-
+            exonList = list(db.children(gene, featuretype='exon', order_by='start'))
 
             # Skip genes that only have 1 exon, or genes that don't have an exon e.g. miRNA
             if len(exonList) == 0 or len(exonList) == 1:
@@ -113,7 +112,6 @@ def main():
             for combo in combos:
                 if not testOverlap(*combo):
                     junctionArray.append(combo)
-
 
             # Create BED file
             for i in range(0, len(junctionArray)):
