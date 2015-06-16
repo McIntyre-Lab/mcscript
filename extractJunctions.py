@@ -19,7 +19,7 @@ def getOptions():
     parser = argparse.ArgumentParser(description="Import database and give exported file name")
     parser.add_argument("--input", dest="databaseFile", action='store', required=True, help="Input database")
     parser.add_argument("--output", dest="outputFile", action='store', required=True, help="Output file name")
-    parser.add_argument("--size", dest="junctionSize", action='store', required=True, help="Size of Junction")
+    parser.add_argument("--size", dest="junctionSize", action='store', type=int, required=True, help="Size of Junction")
 
     args = parser.parse_args()
     return args
