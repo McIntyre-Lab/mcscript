@@ -4,14 +4,13 @@
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import logging
-import sys
 
 # Add-on packages
-import numpy as np
 
 # McLab Packages
 import mclib_Python as mclib
 from mclib_Python import gff as mcgff
+
 
 def getOptions():
     """ Function to pull in arguments """
@@ -26,11 +25,11 @@ def getOptions():
     parser.add_argument("--sd", dest='strand', action='store_true', required=False, help="Flag if you want to make strand dependent fusions. The default is to make strand independent fusions [Optional]")
     parser.add_argument("--obed", dest="obed", action='store', required=True, help="Name of the output BED. [Required]")
     parser.add_argument("--otable", dest="otable", action='store', required=True, help="Name of the output Table Relating Fusions to Exons. [Required]")
-    parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT") 
-    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.") 
+    parser.add_argument("--log", dest="log", action='store', required=False, help="Name of the log file [Optional]; NOTE: if no file is provided logging information will be output to STDOUT")
+    parser.add_argument("--debug", dest="debug", action='store_true', required=False, help="Enable debug output.")
     args = parser.parse_args()
-    #args = parser.parse_args(['--gff', '/home/jfear/storage/useful_dmel_data/dmel-all-no-analysis-r5.57.gff', '--obed', '/home/jfear/Desktop/fb557_si.bed', '--otable', '/home/jfear/Desktop/fb551_si.tsv','--debug'])
     return(args)
+
 
 def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
     """ This functions names the fusions and writes their output. If a fusion
@@ -72,11 +71,11 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
             # singleton
             name = "S{0}{1}".format(localCnt, sfx)
 
-            # singletons by definition don't have multiple genes 
+            # singletons by definition don't have multiple genes
             flag_multigene = '0'
 
-        # Write output in a bed format 
-        start = str(fusion['start'] - 1) # remember bed is a 0-based format and gff is 1-based
+        # Write output in a bed format
+        start = str(fusion['start'] - 1)  # remember bed is a 0-based format and gff is 1-based
         end = str(fusion['end'])
         strand = str(fusion['strand'])
         myOut = '\t'.join([chrom, start, end, name, '.', strand]) + "\n"
@@ -89,13 +88,14 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
             OUTtable.write(myout)
 
         # increment fusion counter
-        localCnt +=1
+        localCnt += 1
 
     logger.debug('%d fusions' % localCnt)
 
     # Add to the global fusion counter
     global cnt
     cnt += localCnt
+
 
 def main(args):
     ################################################################################
@@ -129,17 +129,17 @@ def main(args):
             # Create Strand dependent fusions
             for currStrand in ('-', '+'):
                 # Get list of all genes in the genome
-                logger.info('Pulling list of exons for chromosome: {0} on strand {1}'.format(chrom.id,currStrand))
-                exons = flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end),strand = currStrand)
+                logger.info('Pulling list of exons for chromosome: {0} on strand {1}'.format(chrom.id, currStrand))
+                exons = flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end), strand = currStrand)
 
                 # Create a list of fusions by merging overlapping exons
-                logger.info('Merging overlapping exons on strand '+currStrand)
+                logger.info('Merging overlapping exons on strand ' + currStrand)
                 fusions = flyGff.merge(exons, ignore_strand=False)
                 writeOutput(chrom.id, fusions, '_SD', OUTbed, OUTtable)
         else:
             # Create Strand independent fusions
             # Get list of all genes in the genome
-            logger.info('Pulling list of exons for chromosome: '+chrom.id)
+            logger.info('Pulling list of exons for chromosome: ' + chrom.id)
             exons = flyGff.db.features_of_type('exon', limit=(chrom.id, chrom.start, chrom.end))
 
             # Create a list of fusions by merging overlapping exons
