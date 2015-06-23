@@ -11,6 +11,9 @@ import logging
 import mclib_Python as mclib
 from mclib_Python import gff as mcgff
 
+# Initialize global FUSION_ID Counter
+COUNT = 1
+
 
 def getOptions():
     """ Function to pull in arguments """
@@ -47,7 +50,7 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
     """
 
     # Attach the global counter
-    localCnt = 0
+    global COUNT
 
     for fusion in fusions:
         # Get list of exons in a fusion
@@ -56,7 +59,7 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
         # Name the Fusion based on if it is a singleton or fusion.
         if fusion['merged']:
             # fusion
-            name = "F{0}{1}".format(localCnt, sfx)
+            name = "F{0}{1}".format(COUNT, sfx)
 
             # Are there multiple genes in this fusion
             ## Get a list of genes
@@ -69,7 +72,7 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
                 flag_multigene = '1'
         else:
             # singleton
-            name = "S{0}{1}".format(localCnt, sfx)
+            name = "S{0}{1}".format(COUNT, sfx)
 
             # singletons by definition don't have multiple genes
             flag_multigene = '0'
@@ -88,13 +91,9 @@ def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
             OUTtable.write(myout)
 
         # increment fusion counter
-        localCnt += 1
+        COUNT += 1
 
-    logger.debug('%d fusions' % localCnt)
-
-    # Add to the global fusion counter
-    global cnt
-    cnt += localCnt
+    logger.debug('%d fusions' % COUNT)
 
 
 def main(args):
@@ -118,10 +117,6 @@ def main(args):
     ################################################################################
     # Get list of chromosomes
     chromosomes = flyGff.get_chrom()
-
-    # Initialize global FUSION_ID Counter
-    global cnt
-    cnt = 1
 
     # Take each chromosome and identify overlapping exons
     for chrom in chromosomes:
@@ -147,7 +142,7 @@ def main(args):
             fusions = flyGff.merge(exons, ignore_strand=True)
             writeOutput(chrom.id, fusions, '_SI', OUTbed, OUTtable)
 
-    logger.debug('%d total fusions' % cnt)
+    logger.debug('%d total fusions' % COUNT)
     OUTbed.close()
     OUTtable.close()
 
