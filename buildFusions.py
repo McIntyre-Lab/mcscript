@@ -35,18 +35,25 @@ def getOptions():
 
 
 def writeOutput(chrom, fusions, sfx, OUTbed, OUTtable):
-    """ This functions names the fusions and writes their output. If a fusion
-    is made from a single exon then it is a singleton and will be prefixed with
-    the letter 'S'. If a fusion is made up of overlapping fusions then it is
-    prefixed with a 'F'.
+    """ This functions names the fusions and writes their output.
+
+    If a fusion is made from a single exon then it is a singleton and will be
+    prefixed with the letter 'S'. If a fusion is made up of overlapping fusions
+    then it is prefixed with a 'F'.
 
     Arguments:
-    ----------
-    chrom (str) = the current chromosome id
-    fusions (generator) = is a generator of merged exons
-    sfx (str) = the suffix to append on to the fusion id {'_SI', '_SD'}
-    OUTbed (obj) = File output object for the BED file
-    OUTtable (obj) = File output object for the Table file
+        :param str chrom: the current chromosome id
+
+        :type fusions: mcgff.FlyGff.merge
+        :param fusions: is a generator of merged exons
+
+        :param str sfx: the suffix to append on to the fusion id {'_SI', '_SD'}
+        :param file OUTbed: File output object for the BED file
+        :param file OUTtable: File output object for the Table file
+
+    Returns:
+        :retunrs: writes output to files.
+
     """
 
     # Attach the global counter
